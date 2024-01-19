@@ -1,0 +1,34 @@
+server {
+    listen [::]:80;
+    listen 80;
+    server_name www.ekcx.co.uk ekcx.co.uk;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen [::]:443 ssl http2;
+    listen 443 ssl http2;
+    server_name ekcx.co.uk www.ekcx.co.uk;
+    access_log /var/log/nginx/ekcx.access.log;
+    error_log /var/log/nginx/ekcx.error.log;
+
+    keepalive_timeout 5;
+    client_max_body_size 4G;
+
+    ssl_certificate /etc/letsencrypt/live/ekcx.co.uk/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/ekcx.co.uk/privkey.pem;
+
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+
+    location / {
+        # needed to chmod +x home/jdog folder for nginx to be able to access the socket.
+        proxy_pass http://unix:/home/jdog/ekcx-web/ekcx.sock;
+        proxy_connect_timeout       75s;
+        proxy_send_timeout          75s;
+        proxy_read_timeout          75s;
+        send_timeout                75s;
+        proxy_set_header HOST $http_host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+	}
+}

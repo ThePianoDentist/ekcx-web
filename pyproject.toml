@@ -1,0 +1,20 @@
+[tool.poetry]
+name = "ekcx-web"
+version = "0.1.0"
+description = ""
+authors = ["Johnny Knight <johnny.knight@hokodo.co>"]
+readme = "README.md"
+packages = []
+
+[tool.poetry.dependencies]
+python = "^3.9"
+fastapi = "^0.109.0"
+uvicorn = "^0.26.0"
+gunicorn = "^21.2.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.4.4"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
