@@ -6,7 +6,7 @@ After=network.target
 User=jdog
 WorkingDirectory=/home/jdog/ekcx
 LimitNOFILE=4096
-ExecStart=/home/jdog/.local/bin/poetry run gunicorn main:app --workers 2 -k uvicorn.workers.UvicornWorker --bind unix:ekcx.sock --error-logfile /var/log/ekcx/error_log.txt
+ExecStart=/home/jdog/.local/bin/poetry run gunicorn main:app --workers 2 -k worker.MyUvicornWorker --bind unix:ekcx.sock --error-logfile /var/log/ekcx/error_log.txt
 Restart=on-failure
 RestartSec=5s
 
