@@ -1,0 +1,30 @@
+<!DOCTYPE HTML>
+<html>
+
+<head>
+  <title>East Kent Cyclocross - Standings</title>
+{% include "head.html" %}
+</head>
+
+<body>
+  <div id="main">
+        {% include "header.html" %}
+    <div id="site_content">
+      <div id="menubar_standings"  class="menubar">
+        <ul id="menu_standings" class="menu">
+            <li {{ 'class=selected' if category == 'v50' else '' }}><a href="/standings/v50">V50/60</a></li>
+            <li {{ 'class=selected' if category == 'v40' else '' }}><a href="/standings/v40">v40/Junior</a></li>
+            <li  {{ 'class=selected' if category == 'womens' else '' }}><a href="/standings/womens">Elite Women</a></li>
+            <li {{ 'class=selected' if category == 'mens' else '' }}><a href="/standings/mens">Elite Men</a></li>
+            <li {{ 'class=selected' if category == 'youth' else '' }}><a href="/standings/youth">Youth</a></li>
+            <li {{ 'class=selected' if category == 'u12' else '' }}><a href="/standings/u12">Under 12</a></li>
+        </ul>
+      </div>
+      <div id="content">
+          {% include "standings/%s.html" % category %}
+      </div>
+    </div>
+    {% include "footer.html" %}
+  </div>
+</body>
+</html>
