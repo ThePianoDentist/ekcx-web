@@ -24,10 +24,11 @@ async def favicon():
     return FileResponse(favicon_path)
 
 
-@app.get("/standings/{category}", response_class=HTMLResponse)
-async def standings(request: Request, category: str):
+@app.get("/standings/{year}/{category}", response_class=HTMLResponse)
+async def standings(request: Request, category: str, year: int):
+    year = year or 2024
     return templates.TemplateResponse(
-        request=request, name="standings.html", context={"category": category, "selected": "standings"}
+        request=request, name="standings.html", context={"category": category, "year": year, "selected": "standings"}
     )
 
 @app.get("/media/", response_class=HTMLResponse)

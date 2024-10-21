@@ -10,18 +10,26 @@
   <div id="main">
         {% include "header.html" %}
     <div id="site_content">
+        <div id="menubar_standings_year"  class="menubar">
+        <ul id="menu_standings_year" class="menu">
+            <li {{ 'class=selected' if year == 2024 else '' }}><a href="/standings/2024/{{category}}">2024</a></li>
+            <li {{ 'class=selected' if year == 2023 else '' }}><a href="/standings/2023/{{category}}">2023</a></li>
+        </ul>
+      </div>
       <div id="menubar_standings"  class="menubar">
         <ul id="menu_standings" class="menu">
-            <li {{ 'class=selected' if category == 'v50' else '' }}><a href="/standings/v50">V50/60</a></li>
-            <li {{ 'class=selected' if category == 'v40' else '' }}><a href="/standings/v40">v40/Junior</a></li>
-            <li  {{ 'class=selected' if category == 'womens' else '' }}><a href="/standings/womens">Elite Women</a></li>
-            <li {{ 'class=selected' if category == 'mens' else '' }}><a href="/standings/mens">Elite Men</a></li>
-            <li {{ 'class=selected' if category == 'youth' else '' }}><a href="/standings/youth">Youth</a></li>
-            <li {{ 'class=selected' if category == 'u12' else '' }}><a href="/standings/u12">Under 12</a></li>
+            <li {{ 'class=selected' if category == 'v50' else '' }}><a href="/standings/{{year}}/v50">V50/60</a></li>
+            <li {{ 'class=selected' if category == 'v40' else '' }}><a href="/standings/{{year}}/v40">v40/Junior</a></li>
+            <li  {{ 'class=selected' if category == 'womens' else '' }}><a href="/standings/{{year}}/womens">Elite Female</a></li>
+            <li {{ 'class=selected' if category == 'mens' else '' }}><a href="/standings/{{year}}/mens">Elite Open</a></li>
+            <li {{ 'class=selected' if category == 'youth' else '' }}><a href="/standings/{{year}}/youth">Youth</a></li>
+            <li {{ 'class=selected' if category == 'u12' else '' }}><a href="/standings/{{year}}/u12">Under 12</a></li>
+            <li {{ 'class=selected' if category == 'teams' else '' }}><a href="/standings/{{year}}/teams">Teams</a></li>
+
         </ul>
       </div>
       <div id="content">
-          {% include "standings/%s.html" % category %}
+          {% include "standings/%s/%s.html" % (year, category) %}
       </div>
     </div>
     {% include "footer.html" %}
