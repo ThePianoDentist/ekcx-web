@@ -48,3 +48,9 @@ async def privacy(request: Request):
     return templates.TemplateResponse(
         request=request, name="privacy.html", context={"selected": "home"}
     )
+
+@app.get("/betteshangerparkchallenges/", response_class=HTMLResponse)
+async def cycling_challenges(request: Request):
+    return templates.TemplateResponse(
+        request=request, name="betteshangerparkchallenges.html", context={"selected": "cycling"}
+    )

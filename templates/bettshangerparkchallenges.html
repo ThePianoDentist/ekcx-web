@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bettshanger Park Cycling Challenges</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .intro {
+            margin-bottom: 30px;
+        }
+        .tabs-container {
+            margin-bottom: 20px;
+        }
+        .category-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .duration-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .tab {
+            padding: 10px 20px;
+            background-color: #f0f0f0;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .tab.active {
+            background-color: #4CAF50;
+            color: white;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background-color: #f8f8f8;
+        }
+        tr:hover {
+            background-color: #f5f5f5;
+        }
+        a {
+            color: #4CAF50;
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="intro">
+        <h1>Bettshanger Park Cycling Challenges</h1>
+        <p>Unofficial records of cycling challenges around the tarmac track at <a href="https://www.betteshanger-park.co.uk/" target="_blank">Bettshanger Park</a>. Email any submissions to <a href="mailto:thepianodentist@protonmail.com">thepianodentist@protonmail.com</a>. Remember to be careful when cycling round the track as families will be obliviously sauntering around. Also pay special attention at the junctions with the Mountain Bike trails. I expect you to ride sensibly given it's a public park and take no liability for if you're an idiot. Good luck :)</p>
+    </div>
+
+    <div class="tabs-container">
+        <div class="category-tabs">
+            <button class="tab active" data-category="all">All</button>
+            <button class="tab" data-category="women">Women</button>
+            <button class="tab" data-category="men">Men</button>
+            <button class="tab" data-category="v50men">V50 Men</button>
+            <button class="tab" data-category="v40men">V40 Men</button>
+            <button class="tab" data-category="v50women">V50 Women</button>
+            <button class="tab" data-category="v40women">V40 Women</button>
+            <button class="tab" data-category="v33men">V33 & 3/4 Men</button>
+        </div>
+
+        <div class="duration-tabs">
+            <button class="tab active" data-duration="9hour">9 Hour</button>
+            <button class="tab" data-duration="3hour">3 Hour</button>
+        </div>
+    </div>
+
+    <table id="resultsTable">
+        <thead>
+            <tr>
+                <th>Ranking</th>
+                <th>Name</th>
+                <th>Laps</th>
+                <th>Link</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Table content will be populated by JavaScript -->
+        </tbody>
+    </table>
+
+    <script>
+        // Sample data structure
+        const challengeData = {
+            'all': {
+                '9hour': [
+                    { ranking: 1, name: 'John Doe', laps: 50, link: '#' },
+                    { ranking: 2, name: 'Jane Smith', laps: 48, link: '#' }
+                ],
+                '3hour': [
+                    { ranking: 1, name: 'Mike Johnson', laps: 25, link: '#' },
+                    { ranking: 2, name: 'Sarah Williams', laps: 24, link: '#' }
+                ]
+            },
+            'women': {
+                '9hour': [
+                    { ranking: 1, name: 'Jane Smith', laps: 48, link: '#' },
+                    { ranking: 2, name: 'Emma Brown', laps: 45, link: '#' }
+                ],
+                '3hour': [
+                    { ranking: 1, name: 'Sarah Williams', laps: 24, link: '#' },
+                    { ranking: 2, name: 'Lisa Taylor', laps: 23, link: '#' }
+                ]
+            }
+            // Add more categories and durations as needed
+        };
+
+        let currentCategory = 'all';
+        let currentDuration = '9hour';
+
+        function updateTable() {
+            const tbody = document.querySelector('#resultsTable tbody');
+            tbody.innerHTML = '';
+
+            const data = challengeData[currentCategory]?.[currentDuration] || [];
+            
+            data.forEach(row => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${row.ranking}</td>
+                    <td>${row.name}</td>
+                    <td>${row.laps}</td>
+                    <td><a href="${row.link}">View</a></td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Add event listeners to category tabs
+        document.querySelectorAll('.category-tabs .tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.category-tabs .tab').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                currentCategory = tab.dataset.category;
+                updateTable();
+            });
+        });
+
+        // Add event listeners to duration tabs
+        document.querySelectorAll('.duration-tabs .tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.duration-tabs .tab').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                currentDuration = tab.dataset.duration;
+                updateTable();
+            });
+        });
+
+        // Initialize the table
+        updateTable();
+    </script>
+</body>
+</html> 
