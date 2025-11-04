@@ -1,0 +1,59 @@
+<!DOCTYPE HTML>
+<html>
+
+<head>
+  <title>East Kent Cyclocross - {{ event_name }}</title>
+  {% include "head.html" %}
+</head>
+
+<body>
+  <div id="main">
+    {% include "header.html" %}
+    <div id="site_content">
+      <div id="content" style="background-color:white; color:black; padding: 20px">
+        <h1>{{ event_name }}</h1>
+        
+        <div style="margin-bottom: 20px;">
+          <p><strong>Date:</strong> {{ event_date }}</p>
+          <p><strong>Location:</strong> {{ event_location }}</p>
+          {% if british_cycling_url %}
+          <p><a href="{{ british_cycling_url }}" target="_blank" style="color: #0066cc;">View on British Cycling →</a></p>
+          {% endif %}
+        </div>
+
+        <hr style="margin: 30px 0; border: 1px solid #ddd;">
+
+        <div style="margin-bottom: 40px;">
+          <h2>Results</h2>
+          <div id="results-placeholder" style="padding: 20px; background-color: #f5f5f5; border: 1px dashed #ccc; text-align: center; color: #666;">
+            <p>Results table will be displayed here.</p>
+          </div>
+        </div>
+
+        <hr style="margin: 30px 0; border: 1px solid #ddd;">
+
+        <div style="margin-bottom: 40px;">
+          <h2>Media</h2>
+          <div style="padding: 15px; background-color: #f9f9f9; border-left: 4px solid #0066cc; margin-bottom: 20px;">
+            <p style="margin: 0; color: #333;">
+              <strong>Have photos or videos from this event?</strong><br>
+              Please email links to <a href="mailto:thepianodentist@protonmail.com" style="color: #0066cc;">thepianodentist@protonmail.com</a> to have them added to this page.
+            </p>
+          </div>
+          <div id="media-links" style="min-height: 100px;">
+            <!-- Media links will be displayed here -->
+          </div>
+        </div>
+
+        <hr style="margin: 30px 0; border: 1px solid #ddd;">
+
+        <p style="text-align: center;">
+          <a href="/events" style="color: #0066cc;">← Back to Events</a>
+        </p>
+      </div>
+    </div>
+    {% include "footer.html" %}
+  </div>
+</body>
+</html>
+
