@@ -12,6 +12,7 @@
     <div id="site_content">
         <div id="menubar_standings_year"  class="menubar">
         <ul id="menu_standings_year" class="menu">
+            <li {{ 'class=selected' if year == 2025 else '' }}><a href="/standings/2025/{{category}}">2025</a></li>
             <li {{ 'class=selected' if year == 2024 else '' }}><a href="/standings/2024/{{category}}">2024</a></li>
             <li {{ 'class=selected' if year == 2023 else '' }}><a href="/standings/2023/{{category}}">2023</a></li>
         </ul>
