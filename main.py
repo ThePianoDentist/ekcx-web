@@ -39,21 +39,21 @@ async def event_detail(request: Request, year: int, round_num: int):
                 "name": "Round 1: Sandwich",
                 "date": "September 14, 2025",
                 "location": "Sandwich",
-                "british_cycling_url": "https://www.britishcycling.org.uk/events?q=East+Kent+Cyclo+Cross+Round+1+Sandwich",
+                "british_cycling_url": "https://www.britishcycling.org.uk/events/details/323235/East-Kent-Cyclo-Cross-League-Round-1-SandwichTechCross---Tim-Mountford-Memorial",
                 "status": "completed"
             },
             2: {
                 "name": "Round 2: Duke Of York (Dover)",
                 "date": "October 19, 2025",
                 "location": "Dover",
-                "british_cycling_url": "https://www.britishcycling.org.uk/events?q=East+Kent+Cyclo+Cross+Round+2+Duke+Of+York",
+                "british_cycling_url": "https://www.britishcycling.org.uk/events/details/327079/East-Kent-Cyclo-Cross-League-Round-2-ActivCyclesCross-#results",
                 "status": "completed"
             },
             3: {
-                "name": "Round 3: Ramsgate",
-                "date": "TBA",
+                "name": "Round 3: Ramsgate (St Lawrence College Cross)",
+                "date": "November 16, 2025",
                 "location": "Ramsgate",
-                "british_cycling_url": "https://www.britishcycling.org.uk/events?q=East+Kent+Cyclo+Cross+Round+3+Ramsgate",
+                "british_cycling_url": "https://www.britishcycling.org.uk/events/details/328116/East-Kent-Cylco-Cross-League-Round-3-StLawrenceCollegeCross",
                 "status": "upcoming"
             },
             4: {
@@ -65,7 +65,7 @@ async def event_detail(request: Request, year: int, round_num: int):
             },
             5: {
                 "name": "Round 5: TBA",
-                "date": "TBA",
+                "date": "January 18, 2026",
                 "location": "TBA",
                 "british_cycling_url": "https://www.britishcycling.org.uk/events?q=East+Kent+Cyclo+Cross+Round+5",
                 "status": "upcoming"
@@ -94,7 +94,7 @@ async def event_detail(request: Request, year: int, round_num: int):
 
 @app.get("/standings/{year}/{category}", response_class=HTMLResponse)
 async def standings(request: Request, category: str, year: int):
-    year = year or 2024
+    year = year or 2025
     return templates.TemplateResponse(
         request=request, name="standings.html", context={"category": category, "year": year, "selected": "standings"}
     )
@@ -115,12 +115,6 @@ async def faq(request: Request):
 async def media(request: Request):
     return templates.TemplateResponse(
         request=request, name="media.html", context={"selected": "media"}
-    )
-
-@app.get("/forum/", response_class=HTMLResponse)
-async def privacy(request: Request):
-    return templates.TemplateResponse(
-        request=request, name="forum.html", context={"selected": "forum"}
     )
 
 @app.get("/privacy/", response_class=HTMLResponse)
