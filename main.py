@@ -3,6 +3,8 @@ from fastapi.staticfiles import StaticFiles
 from starlette.requests import Request
 from starlette.responses import RedirectResponse, HTMLResponse, FileResponse
 from starlette.templating import Jinja2Templates
+from pathlib import Path
+import pandas as pd
 
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -43,7 +45,7 @@ async def event_detail(request: Request, year: int, round_num: int):
                 "status": "completed"
             },
             2: {
-                "name": "Round 2: Duke Of York (Dover)",
+                "name": "Round 2: Dover (Duke of York)",
                 "date": "October 19, 2025",
                 "location": "Dover",
                 "british_cycling_url": "https://www.britishcycling.org.uk/events/details/327079/East-Kent-Cyclo-Cross-League-Round-2-ActivCyclesCross-#results",
@@ -79,13 +81,52 @@ async def event_detail(request: Request, year: int, round_num: int):
             request=request, name="events.html", context={"selected": "events", "error": "Event not found"}
         )
     
+    # Build results sections for completed rounds using local Excel files
+    results_sections = []
+    try:
+        if year == 2025 and round_num in (1, 2):
+            results_dir = Path(__file__).parent / 'results' / str(year) / str(round_num)
+            if results_dir.exists():
+                # Columns to include, ignore any licence fields if present
+                preferred_cols = [
+                    ('Pos', 'Position'),
+                    ('Last Name', 'Last Name'),
+                    ('First Name', 'First Name'),
+                    ('Team', 'Team'),
+                    ('Category', 'Category'),
+                ]
+                for excel_path in sorted(results_dir.glob('*.xlsx')):
+                    try:
+                        df = pd.read_excel(excel_path)
+                    except Exception:
+                        continue
+                    # Filter columns and rename for display
+                    keep = []
+                    col_map = {}
+                    for src, disp in preferred_cols:
+                        if src in df.columns:
+                            keep.append(src)
+                            col_map[src] = disp
+                    if not keep:
+                        continue
+                    df = df[keep].rename(columns=col_map)
+                    # Create HTML table without index
+                    table_html = df.to_html(index=False, border=0, classes='event-results-table')
+                    # Title from file name (strip extension)
+                    section_title = excel_path.stem
+                    results_sections.append({'title': section_title, 'html': table_html})
+    except Exception:
+        # Fail silently for results; page should still render
+        results_sections = []
+
     context = {
         "selected": "events",
         "event_name": event["name"],
         "event_date": event["date"],
         "event_location": event["location"],
         "british_cycling_url": event.get("british_cycling_url"),
-        "status": event["status"]
+        "status": event["status"],
+        "results_sections": results_sections,
     }
     
     return templates.TemplateResponse(
@@ -109,6 +150,16 @@ async def rules(request: Request):
 async def faq(request: Request):
     return templates.TemplateResponse(
         request=request, name="faq.html", context={"selected": "standings"}
+    )
+
+@app.get("/info", response_class=HTMLResponse)
+@app.get("/info/{section}", response_class=HTMLResponse)
+async def info(request: Request, section: str = "rules"):
+    section = section if section in ("rules", "faq") else "rules"
+    return templates.TemplateResponse(
+        request=request,
+        name="info.html",
+        context={"selected": "info", "section": section}
     )
 
 @app.get("/media/", response_class=HTMLResponse)

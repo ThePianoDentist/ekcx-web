@@ -58,7 +58,7 @@ def normalize_first_name(name: str) -> str:
 
 
 def normalize_category(category: str) -> str:
-    """Normalize category values: Masters 40/50/60 to M40/M50/M60."""
+    """Normalize category values: Masters 40/50/60 to Ma40/Ma50/Ma60."""
     if pd.isna(category) or category == "":
         return ""
     category = str(category).strip()
@@ -68,12 +68,12 @@ def normalize_category(category: str) -> str:
     if re.match(r'^masters\s+(\d+)$', category_lower):
         match = re.match(r'^masters\s+(\d+)$', category_lower)
         age = match.group(1)
-        return f'M{age}'
+        return f'Ma{age}'
     # Also handle variations like "Masters40", "Masters 40 Open", etc.
     if re.match(r'^masters\s*(\d+)', category_lower):
         match = re.match(r'^masters\s*(\d+)', category_lower)
         age = match.group(1)
-        return f'M{age}'
+        return f'Ma{age}'
     return category
 
 
@@ -540,8 +540,8 @@ def calculate_standings(all_results: Dict[str, Dict[str, List[Dict]]]) -> Dict[s
                 'points_excl_lowest': points_excl_lowest,
             })
         
-        # Sort by points (excluding lowest), then total points
-        standings_list.sort(key=lambda x: (-x['points_excl_lowest'], -x['total_points']))
+        # Sort by total points (displayed), then points excluding lowest
+        standings_list.sort(key=lambda x: (-x['total_points'], -x['points_excl_lowest']))
         standings[category] = standings_list
     
     return standings

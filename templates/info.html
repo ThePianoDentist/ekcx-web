@@ -1,0 +1,71 @@
+<!DOCTYPE HTML>
+<html>
+
+<head>
+  <title>East Kent Cyclocross - Info</title>
+  {% include "head.html" %}
+</head>
+
+<body>
+  <div id="main">
+    {% include "header.html" %}
+    <div id="site_content">
+      <div id="menubar_info" class="menubar">
+        <ul id="menu_info" class="menu">
+          <li {{ 'class=selected' if section == 'rules' else '' }}><a href="/info/rules">Rules</a></li>
+          <li {{ 'class=selected' if section == 'faq' else '' }}><a href="/info/faq">FAQ</a></li>
+        </ul>
+      </div>
+
+      <div id="content" style="background-color:white; color:black; padding: 20px;">
+        {% if section == 'rules' %}
+          <h1>Rules</h1>
+          <h2>Points System</h2>
+          <table style="border-collapse: collapse; width: 100%; max-width: 400px; margin: 20px 0;">
+            <tr style="background-color: #f5f5f5;">
+              <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Position</th>
+              <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Points</th>
+            </tr>
+            <tr><td style="border: 1px solid #ddd; padding: 8px;">1st</td><td style="border: 1px solid #ddd; padding: 8px;">100</td></tr>
+            <tr style="background-color: #f9f9f9;"><td style="border: 1px solid #ddd; padding: 8px;">2nd</td><td style="border: 1px solid #ddd; padding: 8px;">94</td></tr>
+            <tr><td style="border: 1px solid #ddd; padding: 8px;">3rd</td><td style="border: 1px solid #ddd; padding: 8px;">90</td></tr>
+            <tr style="background-color: #f9f9f9;"><td style="border: 1px solid #ddd; padding: 8px;">4th</td><td style="border: 1px solid #ddd; padding: 8px;">86</td></tr>
+            <tr><td style="border: 1px solid #ddd; padding: 8px;">5th</td><td style="border: 1px solid #ddd; padding: 8px;">83</td></tr>
+            <tr style="background-color: #f9f9f9;"><td style="border: 1px solid #ddd; padding: 8px;">6th</td><td style="border: 1px solid #ddd; padding: 8px;">80</td></tr>
+            <tr><td style="border: 1px solid #ddd; padding: 8px;">7th</td><td style="border: 1px solid #ddd; padding: 8px;">78</td></tr>
+            <tr style="background-color: #f9f9f9;"><td style="border: 1px solid #ddd; padding: 8px;">8th</td><td style="border: 1px solid #ddd; padding: 8px;">76</td></tr>
+            <tr><td style="border: 1px solid #ddd; padding: 8px;">9th</td><td style="border: 1px solid #ddd; padding: 8px;">74</td></tr>
+            <tr style="background-color: #f9f9f9;"><td style="border: 1px solid #ddd; padding: 8px;">10th</td><td style="border: 1px solid #ddd; padding: 8px;">72</td></tr>
+            <tr><td style="border: 1px solid #ddd; padding: 8px;">11th</td><td style="border: 1px solid #ddd; padding: 8px;">70</td></tr>
+            <tr style="background-color: #f9f9f9;"><td style="border: 1px solid #ddd; padding: 8px;">12th</td><td style="border: 1px solid #ddd; padding: 8px;">69</td></tr>
+            <tr><td style="border: 1px solid #ddd; padding: 8px;">13th+</td><td style="border: 1px solid #ddd; padding: 8px;">Decrease by 1 point per position</td></tr>
+          </table>
+
+          <h3>Standings Calculation</h3>
+          <ul style="margin: 10px 0 20px 20px;">
+            <li>Each rider's <strong>lowest score is dropped</strong> from their total, including absences (which count as 0 points).</li>
+            <li>Final standings are calculated using the total points after dropping the lowest score.</li>
+            <li><strong>Example:</strong> If a rider wins 4 races (100 points each = 400 points) and misses 1 race (0 points), their lowest score (0) is dropped, giving them 400 points. If they win all 5 races (100 points each = 500 points), their lowest score (100) is dropped, also giving them 400 points.</li>
+            <li>If a rider has only competed in one race, all points count toward their total.</li>
+          </ul>
+
+          <div style="padding: 30px; background-color: #f9f9f9; border: 1px dashed #ccc; text-align: center; color: #666;">
+            <h2 style="color: #666; margin-top: 0;">Additional Rules</h2>
+            <p style="font-size: 1.1em; margin: 0;">Coming soon...</p>
+          </div>
+        {% elif section == 'faq' %}
+          <h1>Frequently Asked Questions</h1>
+          <div style="padding: 40px; background-color: #f9f9f9; border: 1px dashed #ccc; text-align: center; color: #666;">
+            <h2 style="color: #666; margin-top: 0;">Coming Soon</h2>
+            <p style="font-size: 1.1em; margin: 10px 0;">We're working on compiling a comprehensive FAQ section.</p>
+            <p style="margin: 10px 0;">Check back soon for answers to common questions about the East Kent Cyclocross League.</p>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+    {% include "footer.html" %}
+  </div>
+</body>
+</html>
+
+
