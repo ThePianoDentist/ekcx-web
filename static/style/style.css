@@ -274,7 +274,7 @@ ul.menu li a:hover, ul.menu li.selected a, ul.menu li.selected a:hover
 .sidebar li a, .sidebar li a:hover
 { padding: 0 0 0 40px;
   display: block;
-  background: transparent url(link.png) no-repeat left center;} 
+}
 
 .sidebar li a.selected
 { color: #7E2451;
@@ -287,13 +287,13 @@ ul.menu li a:hover, ul.menu li.selected a, ul.menu li.selected a:hover
 }
 
 #content ul
-{ margin: 2px 0 22px 0px;}
+{ margin: 2px 0 22px 0px;
+  padding-left: 1.2em;}
 
 #content ul li
-{ list-style-type: none;
-  background: url(bullet.png) no-repeat;
-  margin: 0 0 6px 0; 
-  padding: 0 0 4px 25px;
+{ list-style-type: disc;
+  margin: 0 0 6px 0;
+  padding: 0 0 4px 0;
   line-height: 1.5em;}
 
 #footer

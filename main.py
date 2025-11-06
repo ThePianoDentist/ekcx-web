@@ -5,6 +5,7 @@ from starlette.responses import RedirectResponse, HTMLResponse, FileResponse
 from starlette.templating import Jinja2Templates
 from pathlib import Path
 import pandas as pd
+from app.domain.results import load_results_from_json
 
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -83,120 +84,8 @@ async def event_detail(request: Request, year: int, round_num: int):
             request=request, name="events.html", context={"selected": "events", "error": "Event not found"}
         )
     
-    # Build results sections for completed rounds using local CSV/Excel files
-    results_sections = []
-    try:
-        if year == 2025 and round_num in (1, 2):
-            results_dir = Path(__file__).parent / 'results' / str(year) / str(round_num)
-            if results_dir.exists():
-                # Columns to include in display (dynamic, include laps if present)
-                base_cols = [
-                    ('Pos', 'Position'),
-                    ('Position', 'Position'),
-                    ('Last Name', 'Last Name'),
-                    ('Surname', 'Last Name'),
-                    ('First Name', 'First Name'),
-                    ('Forename', 'First Name'),
-                    ('Team', 'Team'),
-                    ('Club', 'Team'),
-                    ('Category', 'Category'),
-                    ('Time', 'Time'),
-                    ('Gap', 'Gap'),
-                ]
-                lap_cols = [(f'Lap {i}', f'Lap {i}') for i in range(1, 20)]
-                preferred_cols = base_cols + lap_cols
-
-                # Helper: clean and reduce columns, dropping licence-like fields
-                def clean_results_df(df: pd.DataFrame) -> pd.DataFrame:
-                    # Remove CrossMgr footer rows if present
-                    def row_contains_footer(row) -> bool:
-                        for val in row:
-                            if isinstance(val, str) and 'Powered by CrossMgr' in val:
-                                return True
-                        return False
-
-                    if not df.empty:
-                        df = df[~df.apply(row_contains_footer, axis=1)]
-
-                    # Drop any licence columns
-                    drops = [c for c in df.columns if str(c).strip().lower() in ("licence", "license", "bc licence", "bc license", "bc_licence", "bc_license") or "licen" in str(c).strip().lower()]
-                    if drops:
-                        df = df.drop(columns=drops)
-
-                    # Build keep columns dynamically in desired order
-                    keep = []
-                    col_map = {}
-                    for src, disp in preferred_cols:
-                        if src in df.columns and src not in keep:
-                            keep.append(src)
-                            col_map[src] = disp
-
-                    if not keep:
-                        return pd.DataFrame()
-
-                    # Reduce to kept columns and rename
-                    df = df[keep].rename(columns=col_map)
-
-                    # Drop rows that are fully empty across kept columns
-                    df = df.dropna(how='all')
-
-                    # Render NaNs as blanks for non-empty rows
-                    df = df.where(df.notna(), '')
-
-                    return df
-
-                def map_filename_to_title(stem: str) -> str:
-                    name = stem.lower()
-                    if 'elite female' in name or 'elite women' in name:
-                        return 'Elite Female'
-                    if 'elite open' in name or 'senior open' in name:
-                        return 'Elite Open'
-                    if 'under 12' in name or 'u12' in name:
-                        return 'Under 12'
-                    if 'under 16' in name or 'u16' in name:
-                        return 'Youth U16/U14'
-                    if 'v40' in name or 'm40' in name:
-                        return 'Veteran 40 Open'
-                    if 'v50' in name or 'm50' in name:
-                        return 'Veteran 50 Open'
-                    return stem
-
-                # Gather files (CSV and XLSX)
-                files = list(results_dir.glob('*.csv')) + list(results_dir.glob('*.CSV')) + list(results_dir.glob('*.xlsx'))
-                for path in sorted(files):
-                    df = pd.DataFrame()
-                    try:
-                        if path.suffix.lower() == '.csv':
-                            # Try common encodings
-                            for enc in (None, 'utf-8', 'utf-8-sig', 'latin-1'):
-                                try:
-                                    if enc is None:
-                                        df = pd.read_csv(path)
-                                    else:
-                                        df = pd.read_csv(path, encoding=enc)
-                                    break
-                                except Exception:
-                                    df = pd.DataFrame()
-                            if df.empty:
-                                continue
-                        else:
-                            # Excel files have headers at row 5 (0-indexed: row 4 is header row, row 5 is data start)
-                            df = pd.read_excel(path, header=5)
-                    except Exception:
-                        continue
-
-                    df = clean_results_df(df)
-                    if df.empty:
-                        continue
-
-                    table_html = df.to_html(index=False, border=0, classes='event-results-table', na_rep='')
-                    section_title = map_filename_to_title(path.stem)
-                    results_sections.append({'title': section_title, 'html': table_html})
-    except Exception as e:
-        # Fail silently for results; page should still render
-        # Uncomment the line below for debugging if needed:
-        # import logging; logging.error(f"Error loading results: {e}")
-        results_sections = []
+    # Load precomputed results sections from JSON instead of extracting per request
+    results_sections = load_results_from_json(year, round_num) or []
 
     context = {
         "selected": "events",
