@@ -10,6 +10,7 @@
   <div id="main">
         {% include "header.html" %}
     <div id="site_content">
+      {% include "nav.html" %}
         <div id="menubar_standings_year"  class="menubar">
         <ul id="menu_standings_year" class="menu">
             <li {{ 'class=selected' if year == 2025 else '' }}><a href="/standings/2025/{{category}}">2025</a></li>
@@ -29,45 +30,8 @@
 
         </ul>
       </div>
-      <div id="content" style="width: 700px;">
+      <div id="content" style="width: 100%;">
           {% include "standings/%s/%s.html" % (year, category) %}
-      </div>
-      <div class="sidebar" style="background-color: white; color: black; padding: 20px; border-radius: 5px;">
-        <h2 style="color: #FA057E; margin-top: 0;">Info</h2>
-        
-        <div style="margin-bottom: 30px;">
-          <h3 style="color: #FA057E; font-size: 120%; margin-bottom: 10px;">
-            <a href="/rules" style="color: #FA057E; text-decoration: none;">Rules</a>
-          </h3>
-          <div style="font-size: 0.9em; line-height: 1.6em;">
-            <h4 style="color: #333; margin: 10px 0 5px 0; font-size: 100%;">Points System</h4>
-            <p style="margin: 0 0 10px 0; font-size: 0.9em;">Points are awarded based on finishing position:</p>
-            <ul style="margin: 5px 0 10px 20px; padding: 0; font-size: 0.85em;">
-              <li>1st: 100 points</li>
-              <li>2nd: 94 points</li>
-              <li>3rd: 90 points</li>
-              <li>4th: 86 points</li>
-              <li>5th: 83 points</li>
-              <li>6th: 80 points</li>
-              <li>7th: 78 points</li>
-              <li>8th: 76 points</li>
-              <li>9th: 74 points</li>
-              <li>10th: 72 points</li>
-              <li>11th: 70 points</li>
-              <li>12th: 69 points</li>
-              <li>13th+: Decrease by 1 point per position</li>
-            </ul>
-            <p style="margin: 10px 0 0 0; font-size: 0.85em;"><strong>Note:</strong> Each rider's lowest score is dropped, including absences (which count as 0 points).</p>
-            <p style="margin: 10px 0 0 0; font-size: 0.9em;"><a href="/rules" style="color: #0066cc;">View full rules →</a></p>
-          </div>
-        </div>
-
-        <div style="margin-bottom: 20px;">
-          <h3 style="color: #FA057E; font-size: 120%; margin-bottom: 10px;">
-            <a href="/faq" style="color: #FA057E; text-decoration: none;">FAQ</a>
-          </h3>
-          <p style="font-size: 0.9em; margin: 0;"><a href="/faq" style="color: #0066cc;">Frequently Asked Questions →</a></p>
-        </div>
       </div>
     </div>
     {% include "footer.html" %}

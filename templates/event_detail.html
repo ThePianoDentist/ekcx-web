@@ -43,6 +43,13 @@
 
         <div style="margin-bottom: 40px;">
           <h2>Media</h2>
+          {% if photos_url %}
+          <div style="margin-bottom: 20px;">
+            <p>
+              <a href="{{ photos_url }}" target="_blank" style="color: #0066cc; font-size: 1.1em; font-weight: bold;">📸 View Event Photos →</a>
+            </p>
+          </div>
+          {% endif %}
           <div style="padding: 15px; background-color: #f9f9f9; border-left: 4px solid #0066cc; margin-bottom: 20px;">
             <p style="margin: 0; color: #333;">
               <strong>Have photos or videos from this event?</strong><br>

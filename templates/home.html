@@ -10,11 +10,14 @@
   <div id="main">
     {% include "header.html" %}
     <div id="site_content">
-      <div class="sidebar">
-        Wow. A sidebar!
-      </div>
-      <div id="content">
-        Hello :) Welcome to website!
+      {% include "nav.html" %}
+      <div id="content" class="card" style="background-color:white; color:black;">
+        <h1>East Kent Cyclocross</h1>
+        <p>East Kent Cyclocross (EKCX) is a community cyclocross league based in East Kent, running fun and friendly races for over a decade. </p>
+        <p>We welcome riders of all ages and abilities, across youth, junior, senior and masters categories.</p>
+        <div style="display:flex; gap:16px; flex-wrap:wrap; margin-top:12px;">
+          <img src="{{ url_for('static', path='/images/ekcx.jpg') }}" alt="EKCX" style="width:320px; max-width:100%; border-radius:8px;">
+        </div>
       </div>
     </div>
     {% include "footer.html" %}

@@ -42,6 +42,7 @@ async def event_detail(request: Request, year: int, round_num: int):
                 "date": "September 14, 2025",
                 "location": "Sandwich",
                 "british_cycling_url": "https://www.britishcycling.org.uk/events/details/323235/East-Kent-Cyclo-Cross-League-Round-1-SandwichTechCross---Tim-Mountford-Memorial",
+                "photos_url": "https://mattbristow.photoshelter.com/gallery-collection/Round-1-Sandwich-Tech-14-09-2025/C0000NswQ1d1LX.o",
                 "status": "completed"
             },
             2: {
@@ -49,6 +50,7 @@ async def event_detail(request: Request, year: int, round_num: int):
                 "date": "October 19, 2025",
                 "location": "Dover",
                 "british_cycling_url": "https://www.britishcycling.org.uk/events/details/327079/East-Kent-Cyclo-Cross-League-Round-2-ActivCyclesCross-#results",
+                "photos_url": "https://mattbristow.photoshelter.com/gallery-collection/Round-2-Duke-of-Yorks-Royal-Military-School-19-10-2025/C0000P8dCh6I3wG0",
                 "status": "completed"
             },
             3: {
@@ -81,39 +83,71 @@ async def event_detail(request: Request, year: int, round_num: int):
             request=request, name="events.html", context={"selected": "events", "error": "Event not found"}
         )
     
-    # Build results sections for completed rounds using local Excel files
+    # Build results sections for completed rounds using local CSV/Excel files
     results_sections = []
     try:
         if year == 2025 and round_num in (1, 2):
             results_dir = Path(__file__).parent / 'results' / str(year) / str(round_num)
             if results_dir.exists():
-                # Columns to include, ignore any licence fields if present
+                # Columns to include in display
                 preferred_cols = [
                     ('Pos', 'Position'),
+                    ('Position', 'Position'),
                     ('Last Name', 'Last Name'),
+                    ('Surname', 'Last Name'),
                     ('First Name', 'First Name'),
+                    ('Forename', 'First Name'),
                     ('Team', 'Team'),
+                    ('Club', 'Team'),
                     ('Category', 'Category'),
                 ]
-                for excel_path in sorted(results_dir.glob('*.xlsx')):
-                    try:
-                        df = pd.read_excel(excel_path)
-                    except Exception:
-                        continue
-                    # Filter columns and rename for display
+
+                # Helper: clean and reduce columns, dropping licence-like fields
+                def clean_results_df(df: pd.DataFrame) -> pd.DataFrame:
+                    # Drop any licence columns
+                    drops = [c for c in df.columns if str(c).strip().lower() in ("licence", "license", "bc licence", "bc license", "bc_licence", "bc_license") or "licen" in str(c).strip().lower()]
+                    if drops:
+                        df = df.drop(columns=drops)
                     keep = []
                     col_map = {}
                     for src, disp in preferred_cols:
-                        if src in df.columns:
+                        if src in df.columns and src not in keep:
                             keep.append(src)
                             col_map[src] = disp
                     if not keep:
-                        continue
+                        return pd.DataFrame()
                     df = df[keep].rename(columns=col_map)
-                    # Create HTML table without index
+                    return df
+
+                # Gather files (CSV and XLSX)
+                files = list(results_dir.glob('*.csv')) + list(results_dir.glob('*.CSV')) + list(results_dir.glob('*.xlsx'))
+                for path in sorted(files):
+                    df = pd.DataFrame()
+                    try:
+                        if path.suffix.lower() == '.csv':
+                            # Try common encodings
+                            for enc in (None, 'utf-8', 'utf-8-sig', 'latin-1'):
+                                try:
+                                    if enc is None:
+                                        df = pd.read_csv(path)
+                                    else:
+                                        df = pd.read_csv(path, encoding=enc)
+                                    break
+                                except Exception:
+                                    df = pd.DataFrame()
+                            if df.empty:
+                                continue
+                        else:
+                            df = pd.read_excel(path)
+                    except Exception:
+                        continue
+
+                    df = clean_results_df(df)
+                    if df.empty:
+                        continue
+
                     table_html = df.to_html(index=False, border=0, classes='event-results-table')
-                    # Title from file name (strip extension)
-                    section_title = excel_path.stem
+                    section_title = path.stem
                     results_sections.append({'title': section_title, 'html': table_html})
     except Exception:
         # Fail silently for results; page should still render
@@ -125,6 +159,7 @@ async def event_detail(request: Request, year: int, round_num: int):
         "event_date": event["date"],
         "event_location": event["location"],
         "british_cycling_url": event.get("british_cycling_url"),
+        "photos_url": event.get("photos_url"),
         "status": event["status"],
         "results_sections": results_sections,
     }

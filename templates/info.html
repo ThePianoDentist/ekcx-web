@@ -10,6 +10,7 @@
   <div id="main">
     {% include "header.html" %}
     <div id="site_content">
+      {% include "nav.html" %}
       <div id="menubar_info" class="menubar">
         <ul id="menu_info" class="menu">
           <li {{ 'class=selected' if section == 'rules' else '' }}><a href="/info/rules">Rules</a></li>
@@ -58,7 +59,7 @@
           <div style="padding: 40px; background-color: #f9f9f9; border: 1px dashed #ccc; text-align: center; color: #666;">
             <h2 style="color: #666; margin-top: 0;">Coming Soon</h2>
             <p style="font-size: 1.1em; margin: 10px 0;">We're working on compiling a comprehensive FAQ section.</p>
-            <p style="margin: 10px 0;">Check back soon for answers to common questions about the East Kent Cyclocross League.</p>
+            <p style="margin: 10px 0;">For updates and questions in the meantime, visit our <a href="https://www.facebook.com/eastkentcyclocross" target="_blank">Facebook page</a>.</p>
           </div>
         {% endif %}
       </div>

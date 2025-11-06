@@ -1,18 +1,18 @@
 <div id="footer">
-    <div style="display:block">
-        <img src="{{ url_for('static', path='/images/github-mark.png') }}" style="height:5%;width:5%"/><span>
-        <a href="https://github.com/ThePianoDentist/ekcx-web">Source code</a>
-    </div>
-        <div style="display:block">
-    TODO: link facebook (other social links?)
-    </div>
-    <div style="display:block">
-    </span>
-        <span>
-            <a href="/privacy">Privacy Policy</a>
-        </span>
-    </div>
-    <div style="display:block">
-      We have used a modified version of the Creative Commons 3.0 licensed black_white_pink free template from <a href="https://www.html5webtemplates.co.uk/">html5webtemplates.co.uk</a>
-    </div>
+  <div style="display:flex; align-items:center; justify-content:center; gap:16px; flex-wrap:wrap;">
+    <a href="https://www.facebook.com/eastkentcyclocross" target="_blank" aria-label="Facebook" style="display:inline-flex; align-items:center; gap:8px; color:#111; text-decoration:none;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="#1877F2" xmlns="http://www.w3.org/2000/svg"><path d="M22.675 0H1.325C.593 0 0 .593 0 1.326v21.348C0 23.407.593 24 1.325 24h11.483v-9.294H9.691V11.01h3.117V8.41c0-3.1 1.893-4.788 4.659-4.788 1.325 0 2.463.099 2.795.143v3.24l-1.918.001c-1.504 0-1.796.715-1.796 1.765v2.313h3.59l-.467 3.696h-3.123V24h6.127C23.407 24 24 23.407 24 22.674V1.326C24 .593 23.407 0 22.675 0z"/></svg>
+      <span>Facebook</span>
+    </a>
+    <span>•</span>
+    <a href="https://github.com/ThePianoDentist/ekcx-web" target="_blank" aria-label="GitHub" style="display:inline-flex; align-items:center; gap:8px; color:#111; text-decoration:none;">
+      <img src="{{ url_for('static', path='/images/github-mark.png') }}" alt="GitHub" style="height:20px; width:20px;"/>
+      <span>Source</span>
+    </a>
+    <span>•</span>
+    <a href="/privacy" style="color:#111; text-decoration:none;">Privacy Policy</a>
+  </div>
+  <div style="margin-top:8px; font-size: 90%; color:#6B7280;">
+    
+  </div>
 </div>

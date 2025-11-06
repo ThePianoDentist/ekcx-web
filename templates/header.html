@@ -1,18 +1,7 @@
     <div id="header">
       <div id="logo">
         <div id="logo_text">
-          <h1><img src="{{ url_for('static', path='/images/ekcx.jpg') }}" style="width:3%;"/><a href="/">East<span class="logo_colour">Kent</span><span>Cyclocross 🚵</span></a></h1>
-          <br>
-            <h2>Under construction 👷. <a href="https://www.facebook.com/eastkentcyclocross" target="_blank">The facebook page is the best place for info, questions or updates</a></h2>
+          <h1><img class="logo-mark" src="{{ url_for('static', path='/images/ekcx.jpg') }}" alt="EKCX"/><a href="/">East<span class="logo_colour">Kent</span><span> Cyclocross</span></a></h1>
         </div>
-      </div>
-      <div id="menubar" class="menubar">
-        <ul id="menu" class="menu">
-            <li {{ 'class=selected' if selected == 'home' else '' }}><a href="/">Home</a></li>
-          <li {{ 'class=selected' if selected == 'events' else '' }}><a href="/events">Events</a></li>
-          <li {{ 'class=selected' if selected == 'standings' else '' }}><a href="/standings/2025/v50">Standings</a></li>
-          <li {{ 'class=selected' if selected == 'info' else '' }}><a href="/info">Info</a></li>
-                        <li {{ 'class=selected' if selected == 'media' else '' }}><a href="/media">Media</a></li>
-        </ul>
       </div>
     </div>
