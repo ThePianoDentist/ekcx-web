@@ -62,16 +62,16 @@ async def event_detail(request: Request, year: int, round_num: int):
                 "status": "upcoming"
             },
             4: {
-                "name": "Round 4: Betteshanger",
+                "name": "Round 4: #CondorCyclesCross at Betteshanger Country Park",
                 "date": "December 7, 2025",
                 "location": "Betteshanger Country Park, Deal",
                 "british_cycling_url": "https://www.britishcycling.org.uk/events/details/328600/East-Kent-Cyclo-Cross-League-Round-4-CondorCyclesCross",
                 "status": "upcoming"
             },
             5: {
-                "name": "Round 5: TBA",
+                "name": "Round 5: #BetteshangerCross at Betteshanger Country Park",
                 "date": "January 18, 2026",
-                "location": "TBA",
+                "location": "Betteshanger Country Park, Deal",
                 "british_cycling_url": "https://www.britishcycling.org.uk/events?q=East+Kent+Cyclo+Cross+Round+5",
                 "status": "upcoming"
             }

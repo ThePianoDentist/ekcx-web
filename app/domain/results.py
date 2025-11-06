@@ -54,9 +54,9 @@ def _clean_results_df(df: pd.DataFrame, preferred_cols: list) -> pd.DataFrame:
 def _map_filename_to_title(stem: str) -> str:
     name = stem.lower()
     if 'elite female' in name or 'elite women' in name:
-        return 'Elite Female'
+        return 'Women'
     if 'elite open' in name or 'senior open' in name:
-        return 'Elite Open'
+        return 'Senior Open'
     if 'under 12' in name or 'u12' in name:
         return 'Under 12'
     if 'under 16' in name or 'u16' in name:
@@ -143,5 +143,6 @@ def load_results_from_json(year: int, round_num: int, json_path: Path = RESULTS_
         return data.get(str(year), {}).get(str(round_num), [])
     except Exception:
         return []
+
 
 

@@ -443,7 +443,12 @@ table tr td
   .logo-mark
   { height: 1.2em; }
   #logo_text h1, #logo_text h1 a, #logo_text h1 a:hover
-  { font: 700 200% 'Inter', 'century gothic', arial, sans-serif; line-height: 1.1; margin-bottom: 6px; padding-top: 6px; } }
+  { font: 700 200% 'Inter', 'century gothic', arial, sans-serif; line-height: 1.1; margin-bottom: 6px; padding-top: 6px; }
+  #content img[alt="Sandwich Cyclocross"]
+  { max-width: 280px !important;
+    max-height: 200px !important;}
+  #content div[style*="padding-right"]
+  { padding-right: 300px !important;}}
 
 @media (max-width: 480px)
 { body
@@ -451,4 +456,11 @@ table tr td
   h1, h2
   { font-size: 150%;}
   ul.menu li a
-  { padding: 8px 12px;}}
+  { padding: 8px 12px;}
+  #content img[alt="Sandwich Cyclocross"]
+  { max-width: 200px !important;
+    max-height: 150px !important;}
+  #content.card[style*="padding-bottom"]
+  { padding-bottom: 180px !important;}
+  #content div[style*="padding-right"]
+  { padding-right: 20px !important;}}

@@ -11,14 +11,15 @@
     {% include "header.html" %}
     <div id="site_content">
       {% include "nav.html" %}
-      <div id="content" class="card" style="background-color:white; color:black;">
-        <h1>East Kent Cyclocross</h1>
-        <p>East Kent Cyclocross (EKCX) is a community cyclocross league based in East Kent, running fun and friendly races for over a decade. </p>
-        <p>We welcome riders of all ages and abilities, across youth, junior, senior and masters categories.</p>
-        <p>Head to our <a href="https://www.facebook.com/eastkentcyclocross" target="_blank" rel="noopener">Facebook page</a> for more info.</p>
-        <div style="display:flex; gap:16px; flex-wrap:wrap; margin-top:12px;">
-          <img src="{{ url_for('static', path='/images/ekcx.jpg') }}" alt="EKCX" style="width:320px; max-width:100%; border-radius:8px;">
+      <div id="content" class="card" style="background-color:white; color:black; position:relative; padding-bottom:280px;">
+        <div style="padding-right:420px; padding-bottom:20px;">
+          <h1>East Kent Cyclocross</h1>
+          <p>East Kent Cyclocross (EKCX) is a community cyclocross league based in East Kent, running fun and friendly races for over a decade. </p>
+          <p>We welcome riders of all ages and abilities, across youth, junior, senior and masters categories.</p>
+          <p>Head to our <a href="https://www.facebook.com/eastkentcyclocross" target="_blank" rel="noopener">Facebook page</a> for more info.</p>
         </div>
+        <img src="{{ url_for('static', path='/images/sandwich_homepage.jpg') }}" alt="Sandwich Cyclocross" style="position:absolute; top:20px; right:20px; width:auto; max-width:400px; max-height:280px; height:auto; border-radius:8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); z-index:1;">
+        <img src="{{ url_for('static', path='/images/sandwich_homepage2.jpg') }}" alt="Sandwich Cyclocross" style="position:absolute; bottom:20px; left:20px; width:auto; max-width:400px; max-height:280px; height:auto; border-radius:8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); z-index:1;">
       </div>
     </div>
     {% include "footer.html" %}

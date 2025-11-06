@@ -82,10 +82,14 @@ def normalize_team_name(team: str, team_normalizations: Dict[str, str]) -> str:
     if pd.isna(team) or team == "":
         return ""
     team = str(team).strip()
-    # Check if we have a known normalization
+    # Check if we have a known normalization (case-insensitive exact match first)
     team_upper = team.upper()
     for original, normalized in team_normalizations.items():
-        if team_upper == original.upper() or team_upper in original.upper() or original.upper() in team_upper:
+        if team_upper == original.upper():
+            return normalized
+    # Then check for substring matches
+    for original, normalized in team_normalizations.items():
+        if team_upper in original.upper() or original.upper() in team_upper:
             return normalized
     return team
 
@@ -318,9 +322,9 @@ def are_names_similar(name1: str, name2: str, max_distance: int = 1, allow_typos
         if name1_upper in NAME_VARIATIONS[name2_upper]:
             return True
     
-    # For typos, be more conservative - only allow for names longer than 4 chars
-    # This helps avoid false matches like PENYS/DENYS or POPE/HOPE
-    if allow_typos and len(name1_upper) > 4 and len(name2_upper) > 4:
+    # For typos, allow for names 4 chars or longer
+    # This helps catch cases like HOPE/POPE or STEVENE/STEVEN
+    if allow_typos and len(name1_upper) >= 4 and len(name2_upper) >= 4:
         distance = levenshtein_distance(name1_upper, name2_upper)
         # Only allow single character differences, and they must be in similar positions
         if distance == 1:
@@ -364,6 +368,16 @@ def find_similar_riders(riders: List[Tuple[str, str]]) -> List[Tuple[Tuple[str, 
                   are_names_similar(first1, first2, allow_typos=False)):
                 # Both are variations (not typos) - safe to match
                 similar.append(((last1, first1), (last2, first2)))
+            # Special case: both first and last names have one-letter differences
+            # This catches cases like STEVENE HOPE vs STEVEN POPE
+            elif (are_names_similar(last1, last2, allow_typos=True) and 
+                  are_names_similar(first1, first2, allow_typos=True)):
+                # Both names have typos - check if both have single character differences
+                last_distance = levenshtein_distance(last1.upper(), last2.upper())
+                first_distance = levenshtein_distance(first1.upper(), first2.upper())
+                if last_distance == 1 and first_distance == 1:
+                    # Both have exactly one character difference - flag as similar
+                    similar.append(((last1, first1), (last2, first2)))
             elif (are_names_similar(last1, last2, allow_typos=True) and 
                   are_names_similar(first1, first2, allow_typos=True) and
                   len(last1) > 6 and len(last2) > 6 and  # Only allow typos in both if surnames are long enough
@@ -379,15 +393,24 @@ def normalize_rider_and_team_names(all_results: Dict[str, Dict[str, List[Dict]]]
     rider_normalizations = {}
     team_normalizations = {}
     
-    # Collect all unique riders and teams
+    # Predefined team name normalizations (abbreviations, known variations)
+    predefined_team_normalizations = {
+        'LEC': 'Limited Edition Cycling',
+        'lec': 'Limited Edition Cycling',
+        'Lec': 'Limited Edition Cycling',
+    }
+    
+    # Collect all unique riders and teams, and count occurrences
     all_riders = set()
     all_teams = set()
+    rider_counts = defaultdict(int)
     
     for category_results in all_results.values():
         for round_results in category_results.values():
             for result in round_results:
                 rider_key = (result['last_name'], result['first_name'])
                 all_riders.add(rider_key)
+                rider_counts[rider_key] += 1
                 if result['team']:
                     all_teams.add(result['team'])
     
@@ -409,21 +432,34 @@ def normalize_rider_and_team_names(all_results: Dict[str, Dict[str, List[Dict]]]
     riders_list = sorted(list(all_riders))
     similar_riders = find_similar_riders(riders_list)
     
-    # Create a mapping of which name to use (prefer longer/more complete names)
+    # Create a mapping of which name to use (prefer more frequent names, then longer/more complete)
     name_mapping = {}
     for (last1, first1), (last2, first2) in similar_riders:
         # Prefer the name with more complete capitalization, or longer name
         key1 = (last1.upper(), first1.upper())
         key2 = (last2.upper(), first2.upper())
         
-        # Choose the normalization target (prefer names that already exist in map)
-        if key1 in rider_map:
-            target = rider_map[key1]
-        elif key2 in rider_map:
-            target = rider_map[key2]
+        # Count occurrences of each name variant
+        count1 = rider_counts.get((last1, first1), 0)
+        count2 = rider_counts.get((last2, first2), 0)
+        
+        # Choose the normalization target (prefer more frequent, then completeness, then alphabetical)
+        if count1 > count2:
+            target = (last1, first1)
+        elif count2 > count1:
+            target = (last2, first2)
         else:
-            # Choose based on completeness (more capitalized, longer)
-            if (last1 == last1.title() and first1 == first1.title()) or len(first1) > len(first2):
+            # Counts are equal - use completeness and alphabetical order
+            # Prefer better capitalization, then longer names, then alphabetically later
+            if (last1 == last1.title() and first1 == first1.title()) and not (last2 == last2.title() and first2 == first2.title()):
+                target = (last1, first1)
+            elif (last2 == last2.title() and first2 == first2.title()) and not (last1 == last1.title() and first1 == first1.title()):
+                target = (last2, first2)
+            elif len(first1) > len(first2):
+                target = (last1, first1)
+            elif len(first2) > len(first1):
+                target = (last2, first2)
+            elif last1 > last2:  # Alphabetically later (POPE > HOPE)
                 target = (last1, first1)
             else:
                 target = (last2, first2)
@@ -451,6 +487,12 @@ def normalize_rider_and_team_names(all_results: Dict[str, Dict[str, List[Dict]]]
         else:
             team_normalizations[team1] = team2
             print(f"Team normalized: '{team1}' -> '{team2}'")
+    
+    # Add predefined team normalizations
+    for original, normalized in predefined_team_normalizations.items():
+        if original not in team_normalizations:
+            team_normalizations[original] = normalized
+            print(f"Team normalized (predefined): '{original}' -> '{normalized}'")
     
     # Merge name_mapping into rider_normalizations for easier lookup
     rider_normalizations.update(name_mapping)
@@ -752,8 +794,8 @@ def generate_teams_html(team_standings: List[Dict]) -> str:
 	<tr>
 		<td height="20" align="left" style="background: #000000; color: white" sdnum="2057;0;@"><b><font face="Liberation Serif" size=3>Position</font></b></td>
 		<td align="left" style="background: #000000; color: white" sdnum="2057;0;@"><b><font face="Liberation Serif" size=3>Team</font></b></td>
-		<td align="center" style="background: #000000; color: white" sdnum="2057;0;@"><b><font face="Liberation Serif" size=3>Elite Female</font></b></td>
-		<td align="center" style="background: #000000; color: white" sdnum="2057;0;@"><b><font face="Liberation Serif" size=3>Elite Open</font></b></td>
+		<td align="center" style="background: #000000; color: white" sdnum="2057;0;@"><b><font face="Liberation Serif" size=3>Women</font></b></td>
+		<td align="center" style="background: #000000; color: white" sdnum="2057;0;@"><b><font face="Liberation Serif" size=3>Senior Open</font></b></td>
 		<td align="center" style="background: #000000; color: white" sdnum="2057;0;@"><b><font face="Liberation Serif" size=3>Under 12</font></b></td>
 		<td align="center" style="background: #000000; color: white" sdnum="2057;0;@"><b><font face="Liberation Serif" size=3>Under 16</font></b></td>
 		<td align="center" style="background: #000000; color: white" sdnum="2057;0;@"><b><font face="Liberation Serif" size=3>V40</font></b></td>
@@ -814,8 +856,8 @@ def main():
     
     # Category titles
     category_titles = {
-        'mens': 'Elite Open',
-        'womens': 'Elite Female',
+        'mens': 'Senior Open',
+        'womens': 'Women',
         'youth': 'Youth U16/U14',
         'u12': 'Under 12',
         'v40': 'Veteran 40 Open',
