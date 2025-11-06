@@ -10,6 +10,7 @@
   <div id="main">
     {% include "header.html" %}
     <div id="site_content">
+      {% include "nav.html" %}
       <div id="content" style="background-color:white; color:black; padding: 20px">
         <h1>{{ event_name }}</h1>
         
@@ -19,6 +20,28 @@
           {% if british_cycling_url %}
           <p><a href="{{ british_cycling_url }}" target="_blank" style="color: #0066cc;">View on British Cycling →</a></p>
           {% endif %}
+        </div>
+
+        <hr style="margin: 30px 0; border: 1px solid #ddd;">
+
+        <div style="margin-bottom: 40px;">
+          <h2>Media</h2>
+          {% if photos_url %}
+          <div style="margin-bottom: 20px;">
+            <p>
+              <a href="{{ photos_url }}" target="_blank" style="color: #0066cc; font-size: 1.1em; font-weight: bold;">📸 View Event Photos →</a>
+            </p>
+          </div>
+          {% endif %}
+          <div style="padding: 15px; background-color: #f9f9f9; border-left: 4px solid #0066cc; margin-bottom: 20px;">
+            <p style="margin: 0; color: #333;">
+              <strong>Have photos or videos from this event?</strong><br>
+              Please email links to <a href="mailto:thepianodentist+ekcx@protonmail.com" style="color: #0066cc;">thepianodentist@protonmail.com</a> to have them added to this page.
+            </p>
+          </div>
+          <div id="media-links" style="min-height: 100px;">
+            <!-- Media links will be displayed here -->
+          </div>
         </div>
 
         <hr style="margin: 30px 0; border: 1px solid #ddd;">
@@ -37,28 +60,6 @@
               <p>Results table will be displayed here.</p>
             </div>
           {% endif %}
-        </div>
-
-        <hr style="margin: 30px 0; border: 1px solid #ddd;">
-
-        <div style="margin-bottom: 40px;">
-          <h2>Media</h2>
-          {% if photos_url %}
-          <div style="margin-bottom: 20px;">
-            <p>
-              <a href="{{ photos_url }}" target="_blank" style="color: #0066cc; font-size: 1.1em; font-weight: bold;">📸 View Event Photos →</a>
-            </p>
-          </div>
-          {% endif %}
-          <div style="padding: 15px; background-color: #f9f9f9; border-left: 4px solid #0066cc; margin-bottom: 20px;">
-            <p style="margin: 0; color: #333;">
-              <strong>Have photos or videos from this event?</strong><br>
-              Please email links to <a href="mailto:thepianodentist@protonmail.com" style="color: #0066cc;">thepianodentist@protonmail.com</a> to have them added to this page.
-            </p>
-          </div>
-          <div id="media-links" style="min-height: 100px;">
-            <!-- Media links will be displayed here -->
-          </div>
         </div>
 
         <hr style="margin: 30px 0; border: 1px solid #ddd;">
