@@ -55,7 +55,7 @@ def _map_filename_to_title(stem: str) -> str:
     name = stem.lower()
     if 'elite female' in name or 'elite women' in name:
         return 'Women'
-    if 'elite open' in name or 'senior open' in name:
+    if 'elite open' in name or 'senior open' in name or 'senior' in name:
         return 'Senior Open'
     if 'under 12' in name or 'u12' in name:
         return 'Under 12'
@@ -143,6 +143,7 @@ def load_results_from_json(year: int, round_num: int, json_path: Path = RESULTS_
         return data.get(str(year), {}).get(str(round_num), [])
     except Exception:
         return []
+
 
 
 

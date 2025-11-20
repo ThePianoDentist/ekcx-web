@@ -167,13 +167,13 @@ def read_race_result(file_path: Path) -> pd.DataFrame:
 
 
 def determine_category_from_filename(filename: str) -> str:
-    """Determine the category from the filename."""
+    """Determine the category from the filename. Note: Round number is determined by directory, not filename."""
     filename_lower = filename.lower()
     
-    # Map filenames to categories
+    # Map filenames to categories (ignoring R3, R4, R5, R6 in filename - round is determined by directory)
     if 'elite female' in filename_lower or 'elite women' in filename_lower:
         return 'womens'
-    elif 'elite open' in filename_lower or 'senior open' in filename_lower:
+    elif 'elite open' in filename_lower or 'senior open' in filename_lower or 'senior' in filename_lower:
         return 'mens'
     elif 'under 12' in filename_lower or 'u12' in filename_lower:
         return 'u12'
@@ -194,8 +194,8 @@ def collect_results(results_dir: Path) -> Dict[str, Dict[str, List[Dict]]]:
     """
     all_results = defaultdict(lambda: defaultdict(list))
     
-    # Process rounds 1 and 2
-    for round_dir in sorted(results_dir.glob('[12]')):
+    # Process rounds 1, 2, and 3
+    for round_dir in sorted(results_dir.glob('[123]')):
         if not round_dir.is_dir():
             continue
             

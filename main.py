@@ -59,7 +59,8 @@ async def event_detail(request: Request, year: int, round_num: int):
                 "date": "November 16, 2025",
                 "location": "Ramsgate",
                 "british_cycling_url": "https://www.britishcycling.org.uk/events/details/328116/East-Kent-Cylco-Cross-League-Round-3-StLawrenceCollegeCross",
-                "status": "upcoming"
+                "photos_url": "https://mattbristow.photoshelter.com/gallery-collection/Round-3-St-Lawrence-College-16112025/C0000BxUK_zBe8W0",
+                "status": "completed"
             },
             4: {
                 "name": "Round 4: #CondorCyclesCross at Betteshanger Country Park",
