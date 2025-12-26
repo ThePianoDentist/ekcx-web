@@ -67,7 +67,8 @@ async def event_detail(request: Request, year: int, round_num: int):
                 "date": "December 7, 2025",
                 "location": "Betteshanger Country Park, Deal",
                 "british_cycling_url": "https://www.britishcycling.org.uk/events/details/328600/East-Kent-Cyclo-Cross-League-Round-4-CondorCyclesCross",
-                "status": "upcoming"
+                "photos_url": "https://mattbristow.photoshelter.com/gallery-collection/Round-4-Betteshanger-Park-07-12-2025/C00004TRC4XcNqG8",
+                "status": "completed"
             },
             5: {
                 "name": "Round 5: #BetteshangerCross at Betteshanger Country Park",
