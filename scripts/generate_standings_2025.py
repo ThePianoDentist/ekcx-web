@@ -584,6 +584,9 @@ def calculate_standings(all_results: Dict[str, Dict[str, List[Dict]]]) -> Dict[s
     standings = {}
     
     for category, category_results in all_results.items():
+        # Determine max rounds for this category
+        max_rounds = max([int(r) for r in category_results.keys()] + [0], default=0)
+        
         # Collect all results for this category
         rider_results = defaultdict(lambda: {'points': [], 'rounds': [], 'last_name': '', 
                                            'first_name': '', 'team': '', 'category': '', 'gender': ''})
@@ -614,11 +617,17 @@ def calculate_standings(all_results: Dict[str, Dict[str, List[Dict]]]) -> Dict[s
             # Calculate total points
             total_points = sum(p for _, p in data['points'])
             
-            # Calculate points excluding lowest (if more than one race)
-            points_list = [p for _, p in sorted(data['points'])]
-            if len(points_list) > 1:
-                points_excl_lowest = total_points - min(points_list)
+            # Calculate points excluding lowest
+            # If N rounds total, take N-1 highest scores (or all if person has fewer)
+            points_list = sorted([p for _, p in data['points']], reverse=True)
+            num_rounds_participated = len(points_list)
+            
+            if max_rounds >= 3:
+                # Take (max_rounds - 1) highest scores, or all if person has fewer
+                num_to_count = min(max_rounds - 1, num_rounds_participated)
+                points_excl_lowest = sum(points_list[:num_to_count])
             else:
+                # If less than 3 rounds, just use total points
                 points_excl_lowest = total_points
             
             standings_list.append({
@@ -633,9 +642,11 @@ def calculate_standings(all_results: Dict[str, Dict[str, List[Dict]]]) -> Dict[s
                 'points_excl_lowest': points_excl_lowest,
             })
         
-        # Sort by total points (displayed), then points excluding lowest
-        standings_list.sort(key=lambda x: (-x['total_points'], -x['points_excl_lowest']))
+        # Sort by points_excl_lowest first, then total_points
+        standings_list.sort(key=lambda x: (-x['points_excl_lowest'], -x['total_points']))
         standings[category] = standings_list
+    
+    return standings
     
     return standings
 
@@ -643,6 +654,9 @@ def calculate_standings(all_results: Dict[str, Dict[str, List[Dict]]]) -> Dict[s
 def generate_html_table_row(position: int, rider: Dict, max_rounds: int, is_youth: bool = False) -> str:
     """Generate an HTML table row for a rider."""
     row_style = ' style="background: #CCCCCC;"' if position % 2 == 0 else ''
+    
+    # Determine if we should show "Points excluding lowest" column (when 3+ rounds)
+    show_points_excl_lowest = max_rounds >= 3
     
     # Round columns
     round_cols = []
@@ -658,6 +672,13 @@ def generate_html_table_row(position: int, rider: Dict, max_rounds: int, is_yout
     team_display = rider['team'] if rider['team'] else '<br>'
     category_display = normalize_category(rider['category']) if rider['category'] else ''
     
+    # Points columns - regular points (non-bold), and points excluding lowest (bold) if applicable
+    if show_points_excl_lowest:
+        points_cols = f'''		<td align="center"{row_style} sdval="{rider['total_points']}" sdnum="2057;"><font face="Liberation Serif" size=3 color="#000000">{rider['total_points']}</font></td>
+		<td align="center"{row_style} sdval="{rider['points_excl_lowest']}" sdnum="2057;"><b><font face="Liberation Serif" size=3 color="#000000">{rider['points_excl_lowest']}</font></b></td>'''
+    else:
+        points_cols = f'		<td align="center"{row_style} sdval="{rider['total_points']}" sdnum="2057;"><font face="Liberation Serif" size=3 color="#000000">{rider['total_points']}</font></td>'
+    
     if is_youth:
         gender_display = rider.get('gender', '')
         return f'''	<tr>
@@ -668,7 +689,7 @@ def generate_html_table_row(position: int, rider: Dict, max_rounds: int, is_yout
 		<td align="left"{row_style}><font face="Liberation Serif" size=3 color="#000000">{category_display}</font></td>
 		<td align="left"{row_style}><font face="Liberation Serif" size=3 color="#000000">{gender_display}</font></td>
 {round_cols_str}
-		<td align="center"{row_style} sdval="{rider['total_points']}" sdnum="2057;"><b><font face="Liberation Serif" size=3 color="#000000">{rider['total_points']}</font></b></td>
+{points_cols}
 	</tr>'''
     else:
         return f'''	<tr>
@@ -678,7 +699,7 @@ def generate_html_table_row(position: int, rider: Dict, max_rounds: int, is_yout
 		<td align="left"{row_style}><font face="Liberation Serif" size=3 color="#000000">{team_display}</font></td>
 		<td align="left"{row_style}><font face="Liberation Serif" size=3 color="#000000">{category_display}</font></td>
 {round_cols_str}
-		<td align="center"{row_style} sdval="{rider['total_points']}" sdnum="2057;"><b><font face="Liberation Serif" size=3 color="#000000">{rider['total_points']}</font></b></td>
+{points_cols}
 	</tr>'''
 
 
@@ -713,7 +734,12 @@ def generate_category_html(category: str, standings: List[Dict], max_rounds: int
     round_headers = '\n'.join([f'		<td align="center" style="background: #000000; color: white" sdval="{i}" sdnum="2057;0;@"><font face="Liberation Serif" size=3>{i}</font></td>' 
                               for i in range(1, max_rounds + 1)])
     
+    # Determine if we should show "Points excluding lowest" column (when 3+ rounds)
+    show_points_excl_lowest = max_rounds >= 3
+    
     if is_youth:
+        points_cols = '<colgroup width="55"></colgroup>' if not show_points_excl_lowest else '<colgroup width="55"></colgroup>\n	<colgroup width="70"></colgroup>'
+        points_headers = '<td align="center" style="background: #000000; color: white;" sdnum="2057;0;@"><font face="Liberation Serif" size=3>Points</font></td>' if not show_points_excl_lowest else '<td align="center" style="background: #000000; color: white;" sdnum="2057;0;@"><font face="Liberation Serif" size=3>Points</font></td>\n		<td align="center" style="background: #000000; color: white;" sdnum="2057;0;@"><b><font face="Liberation Serif" size=3>Points excluding lowest</font></b></td>'
         header = f'''<div>
 <h1 class="western">{title}</h1>
 <table cellspacing="0" border="0" style="width: 100%;">
@@ -724,7 +750,7 @@ def generate_category_html(category: str, standings: List[Dict], max_rounds: int
 	<colgroup width="84"></colgroup>
 	<colgroup width="62"></colgroup>
 	<colgroup span="{max_rounds}" width="36"></colgroup>
-	<colgroup width="55"></colgroup>
+	{points_cols}
 	<tr>
 		<td height="20" align="left" style="background: #000000; color: white;" sdnum="2057;0;@"><b><font face="Liberation Serif" size=3>Position</font></b></td>
 		<td align="left" style="background: #000000; color: white;" sdnum="2057;0;@"><b><font face="Liberation Serif" size=3>Last Name</font></b></td>
@@ -733,9 +759,11 @@ def generate_category_html(category: str, standings: List[Dict], max_rounds: int
 		<td align="left" style="background: #000000; color: white;" sdnum="2057;0;@"><b><font face="Liberation Serif" size=3>Category</font></b></td>
 		<td align="left" style="background: #000000; color: white;" sdnum="2057;0;@"><b><font face="Liberation Serif" size=3>Gender</font></b></td>
 {round_headers}
-		<td align="center" style="background: #000000; color: white;" sdnum="2057;0;@"><b><font face="Liberation Serif" size=3>Points</font></b></td>
+		{points_headers}
 	</tr>'''
     else:
+        points_cols = '<colgroup width="55"></colgroup>' if not show_points_excl_lowest else '<colgroup width="55"></colgroup>\n	<colgroup width="70"></colgroup>'
+        points_headers = '<td align="center" style="background: #000000; color: white" sdnum="2057;0;@"><font face="Liberation Serif" size=3>Points</font></td>' if not show_points_excl_lowest else '<td align="center" style="background: #000000; color: white" sdnum="2057;0;@"><font face="Liberation Serif" size=3>Points</font></td>\n		<td align="center" style="background: #000000; color: white" sdnum="2057;0;@"><b><font face="Liberation Serif" size=3>Points excluding lowest</font></b></td>'
         header = f'''<div><h1 class="western">{title}</h1>
 <table cellspacing="0" border="0" style="width: 100%;">
 	<colgroup width="67"></colgroup>
@@ -744,7 +772,7 @@ def generate_category_html(category: str, standings: List[Dict], max_rounds: int
 	<colgroup width="{team_width}"></colgroup>
 	<colgroup width="76"></colgroup>
 	<colgroup span="{max_rounds}" width="36"></colgroup>
-	<colgroup width="55"></colgroup>
+	{points_cols}
 	<tr>
 		<td height="20" align="left" style="background: #000000; color: white" sdnum="2057;0;@"><b><font face="Liberation Serif" size=3>Position</font></b></td>
 		<td align="left" style="background: #000000; color: white" sdnum="2057;0;@"><b><font face="Liberation Serif" size=3>Last Name</font></b></td>
@@ -752,7 +780,7 @@ def generate_category_html(category: str, standings: List[Dict], max_rounds: int
 		<td align="left" style="background: #000000; color: white" sdnum="2057;0;@"><b><font face="Liberation Serif" size=3>Team</font></b></td>
 		<td align="left" style="background: #000000; color: white" sdnum="2057;0;@"><b><font face="Liberation Serif" size=3>Category</font></b></td>
 {round_headers}
-		<td align="center" style="background: #000000; color: white" sdnum="2057;0;@"><b><font face="Liberation Serif" size=3>Points</font></b></td>
+		{points_headers}
 	</tr>'''
     
     # Rows
