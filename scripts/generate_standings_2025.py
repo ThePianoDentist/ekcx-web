@@ -9,7 +9,7 @@ import pandas as pd
 import re
 from pathlib import Path
 from collections import defaultdict
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List, Tuple, Optional, Any
 import difflib
 
 # Points system for Seniors/U23 and Veteran Open 40/50
@@ -194,12 +194,15 @@ def collect_results(results_dir: Path) -> Dict[str, Dict[str, List[Dict]]]:
     """
     all_results = defaultdict(lambda: defaultdict(list))
     
-    # Process rounds 1, 2, and 3
-    for round_dir in sorted(results_dir.glob('[123]')):
-        if not round_dir.is_dir():
-            continue
-            
-        round_num = round_dir.name
+    # Process all round directories (any numeric directory name)
+    round_dirs = []
+    for item in results_dir.iterdir():
+        if item.is_dir() and item.name.isdigit():
+            round_dirs.append((int(item.name), item))
+    
+    # Sort by round number
+    for round_num_int, round_dir in sorted(round_dirs):
+        round_num = str(round_num_int)
         
         # Process each Excel file in the round directory
         for excel_file in sorted(round_dir.glob('*.xlsx')):
@@ -388,6 +391,67 @@ def find_similar_riders(riders: List[Tuple[str, str]]) -> List[Tuple[Tuple[str, 
     return similar
 
 
+def resolve_canonical_name(name: Any, normalizations: Dict[Any, Any]) -> Any:
+    """Resolve a name through the normalization chain to get the canonical name.
+    
+    Detects and breaks cycles to prevent infinite loops.
+    """
+    canonical = name
+    visited = set()
+    
+    while canonical in normalizations:
+        # Detect cycle - if we've seen this name before, break to prevent infinite loop
+        if canonical in visited:
+            break
+        visited.add(canonical)
+        canonical = normalizations[canonical]
+    
+    return canonical
+
+
+def choose_rider_target(rider1: Tuple[str, str], rider2: Tuple[str, str], 
+                        counts: Dict[Tuple[str, str], int]) -> Tuple[str, str]:
+    """Choose target rider name: frequency > length > alphabetical."""
+    count1 = counts.get(rider1, 0)
+    count2 = counts.get(rider2, 0)
+    
+    if count1 > count2:
+        return rider1
+    elif count2 > count1:
+        return rider2
+    
+    # Equal frequency - use total length (last + first)
+    len1 = len(rider1[0]) + len(rider1[1])
+    len2 = len(rider2[0]) + len(rider2[1])
+    if len1 > len2:
+        return rider1
+    elif len2 > len1:
+        return rider2
+    
+    # Equal length - use alphabetical (deterministic)
+    return rider1 if rider1 > rider2 else rider2
+
+
+def choose_team_target(team1: str, team2: str, counts: Dict[str, int]) -> str:
+    """Choose target team name: frequency > length > alphabetical."""
+    count1 = counts.get(team1, 0)
+    count2 = counts.get(team2, 0)
+    
+    if count1 > count2:
+        return team1
+    elif count2 > count1:
+        return team2
+    
+    # Equal frequency - use length
+    if len(team1) > len(team2):
+        return team1
+    elif len(team2) > len(team1):
+        return team2
+    
+    # Equal length - use alphabetical (deterministic)
+    return team1 if team1 > team2 else team2
+
+
 def normalize_rider_and_team_names(all_results: Dict[str, Dict[str, List[Dict]]]) -> Tuple[Dict, Dict]:
     """Normalize rider names and team names, printing where normalization occurred."""
     rider_normalizations = {}
@@ -404,6 +468,7 @@ def normalize_rider_and_team_names(all_results: Dict[str, Dict[str, List[Dict]]]
     all_riders = set()
     all_teams = set()
     rider_counts = defaultdict(int)
+    team_counts = defaultdict(int)
     
     for category_results in all_results.values():
         for round_results in category_results.values():
@@ -412,90 +477,75 @@ def normalize_rider_and_team_names(all_results: Dict[str, Dict[str, List[Dict]]]
                 all_riders.add(rider_key)
                 rider_counts[rider_key] += 1
                 if result['team']:
-                    all_teams.add(result['team'])
+                    team_name = result['team']
+                    all_teams.add(team_name)
+                    team_counts[team_name] += 1
     
-    # First pass: exact matches after uppercasing
+    # Pass 1: Exact matches after uppercasing (case-insensitive duplicates)
     rider_map = {}
     for last_name, first_name in sorted(all_riders):
         key = (last_name.upper(), first_name.upper())
+        original = (last_name, first_name)
         if key not in rider_map:
-            rider_map[key] = (last_name, first_name)
+            rider_map[key] = original
         else:
-            # Found exact match - normalize to the first one
-            original = (last_name, first_name)
-            normalized = rider_map[key]
-            if original != normalized:
-                rider_normalizations[original] = normalized
-                print(f"Rider normalized (exact match): {original} -> {normalized}")
+            # Found exact match - choose target and normalize both
+            existing = rider_map[key]
+            target = choose_rider_target(original, existing, rider_counts)
+            rider_map[key] = target  # Update map to use target
+            if original != target:
+                rider_normalizations[original] = target
+                print(f"Rider normalized (exact match): {original} -> {target}")
+            if existing != target:
+                rider_normalizations[existing] = target
+                print(f"Rider normalized (exact match): {existing} -> {target}")
     
-    # Second pass: find similar riders (variations, typos, etc.)
+    # Pass 2: Global similarity matching for riders
     riders_list = sorted(list(all_riders))
     similar_riders = find_similar_riders(riders_list)
     
-    # Create a mapping of which name to use (prefer more frequent names, then longer/more complete)
-    name_mapping = {}
     for (last1, first1), (last2, first2) in similar_riders:
-        # Prefer the name with more complete capitalization, or longer name
-        key1 = (last1.upper(), first1.upper())
-        key2 = (last2.upper(), first2.upper())
+        rider1 = (last1, first1)
+        rider2 = (last2, first2)
         
-        # Count occurrences of each name variant
-        count1 = rider_counts.get((last1, first1), 0)
-        count2 = rider_counts.get((last2, first2), 0)
+        # Skip if already normalized
+        if rider1 in rider_normalizations or rider2 in rider_normalizations:
+            continue
         
-        # Choose the normalization target (prefer more frequent, then completeness, then alphabetical)
-        if count1 > count2:
-            target = (last1, first1)
-        elif count2 > count1:
-            target = (last2, first2)
-        else:
-            # Counts are equal - use completeness and alphabetical order
-            # Prefer better capitalization, then longer names, then alphabetically later
-            if (last1 == last1.title() and first1 == first1.title()) and not (last2 == last2.title() and first2 == first2.title()):
-                target = (last1, first1)
-            elif (last2 == last2.title() and first2 == first2.title()) and not (last1 == last1.title() and first1 == first1.title()):
-                target = (last2, first2)
-            elif len(first1) > len(first2):
-                target = (last1, first1)
-            elif len(first2) > len(first1):
-                target = (last2, first2)
-            elif last1 > last2:  # Alphabetically later (POPE > HOPE)
-                target = (last1, first1)
-            else:
-                target = (last2, first2)
+        # Choose target based on frequency > length > alphabetical
+        target = choose_rider_target(rider1, rider2, rider_counts)
         
         # Normalize both to target
-        if (last1, first1) != target:
-            name_mapping[(last1, first1)] = target
-            if (last1, first1) not in rider_normalizations:
-                rider_normalizations[(last1, first1)] = target
-                print(f"Rider normalized (similar): {last1}, {first1} -> {target[0]}, {target[1]}")
-        
-        if (last2, first2) != target:
-            name_mapping[(last2, first2)] = target
-            if (last2, first2) not in rider_normalizations:
-                rider_normalizations[(last2, first2)] = target
-                print(f"Rider normalized (similar): {last2}, {first2} -> {target[0]}, {target[1]}")
+        if rider1 != target:
+            rider_normalizations[rider1] = target
+            print(f"Rider normalized (similar): {rider1} -> {target}")
+        if rider2 != target:
+            rider_normalizations[rider2] = target
+            print(f"Rider normalized (similar): {rider2} -> {target}")
     
-    # Find and normalize similar team names
+    # Pass 3: Global similarity matching for teams
     similar_teams = find_similar_teams(all_teams)
     for team1, team2 in similar_teams:
-        # Use the longer or more complete name
-        if len(team1) >= len(team2):
-            team_normalizations[team2] = team1
-            print(f"Team normalized: '{team2}' -> '{team1}'")
-        else:
-            team_normalizations[team1] = team2
-            print(f"Team normalized: '{team1}' -> '{team2}'")
+        # Skip if already normalized
+        if team1 in team_normalizations or team2 in team_normalizations:
+            continue
+        
+        # Choose target based on frequency > length > alphabetical
+        target = choose_team_target(team1, team2, team_counts)
+        
+        # Normalize both to target
+        if team1 != target:
+            team_normalizations[team1] = target
+            print(f"Team normalized: '{team1}' -> '{target}'")
+        if team2 != target:
+            team_normalizations[team2] = target
+            print(f"Team normalized: '{team2}' -> '{target}'")
     
-    # Add predefined team normalizations
+    # Pass 4: Add predefined team normalizations
     for original, normalized in predefined_team_normalizations.items():
         if original not in team_normalizations:
             team_normalizations[original] = normalized
             print(f"Team normalized (predefined): '{original}' -> '{normalized}'")
-    
-    # Merge name_mapping into rider_normalizations for easier lookup
-    rider_normalizations.update(name_mapping)
     
     # Apply normalizations to results
     for category_results in all_results.values():
@@ -504,24 +554,25 @@ def normalize_rider_and_team_names(all_results: Dict[str, Dict[str, List[Dict]]]
                 # Normalize rider
                 rider_key = (result['last_name'], result['first_name'])
                 
-                # First check exact match
+                # Check exact match first
                 normalized_key = (rider_key[0].upper(), rider_key[1].upper())
                 if normalized_key in rider_map:
-                    normalized_rider = rider_map[normalized_key]
+                    normalized_rider = resolve_canonical_name(rider_map[normalized_key], rider_normalizations)
                     if rider_key != normalized_rider:
                         result['last_name'] = normalized_rider[0]
                         result['first_name'] = normalized_rider[1]
+                        continue
                 
-                # Then check similar matches (includes name_mapping now)
+                # Then check similar matches
                 if rider_key in rider_normalizations:
-                    normalized_rider = rider_normalizations[rider_key]
+                    normalized_rider = resolve_canonical_name(rider_normalizations[rider_key], rider_normalizations)
                     result['last_name'] = normalized_rider[0]
                     result['first_name'] = normalized_rider[1]
                 
                 # Normalize team
                 if result['team']:
                     original_team = result['team']
-                    normalized_team = normalize_team_name(original_team, team_normalizations)
+                    normalized_team = resolve_canonical_name(original_team, team_normalizations)
                     if normalized_team != original_team:
                         result['team'] = normalized_team
     

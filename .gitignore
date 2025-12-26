@@ -162,4 +162,4 @@ cython_debug/
 
 *.sqlite3
 *.sqlite3-journal
-*.sqllite
+*.sqlite

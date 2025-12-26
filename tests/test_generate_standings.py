@@ -16,6 +16,10 @@ from generate_standings_2025 import (
     levenshtein_distance,
     find_similar_riders,
     determine_category_from_filename,
+    resolve_canonical_name,
+    choose_rider_target,
+    choose_team_target,
+    normalize_rider_and_team_names,
 )
 
 
@@ -257,4 +261,262 @@ class TestIntegration:
         name2 = normalize_name("Mike  Smith")
         # After normalization, "Michael" and "Mike" should be similar
         assert are_names_similar("Michael", "Mike") is True
+
+
+class TestResolveCanonicalName:
+    """Tests for the resolve_canonical_name function."""
+    
+    def test_no_normalization(self):
+        """Test that name without normalization returns itself."""
+        normalizations = {}
+        assert resolve_canonical_name("John", normalizations) == "John"
+        assert resolve_canonical_name(("SMITH", "John"), normalizations) == ("SMITH", "John")
+    
+    def test_single_normalization(self):
+        """Test resolving through a single normalization."""
+        normalizations = {"Mike": "Michael"}
+        assert resolve_canonical_name("Mike", normalizations) == "Michael"
+    
+    def test_chain_normalization(self):
+        """Test resolving through a chain of normalizations."""
+        normalizations = {
+            "Mike": "Michael",
+            "Michael": "MICHAEL"
+        }
+        # Should resolve to the final canonical name
+        result = resolve_canonical_name("Mike", normalizations)
+        assert result == "MICHAEL"
+    
+    def test_circular_reference_detection(self):
+        """Test that circular references are detected and don't cause infinite loops."""
+        normalizations = {
+            "Mike": "Michael",
+            "Michael": "Mike"  # Circular reference
+        }
+        # Should break the cycle and return one of the names (not loop forever)
+        result = resolve_canonical_name("Mike", normalizations)
+        assert result in ["Mike", "Michael"]  # Should return one of them, not loop
+    
+    def test_rider_tuple_normalization(self):
+        """Test resolving rider tuples through normalization chain."""
+        normalizations = {
+            ("SMITH", "Mike"): ("SMITH", "Michael"),
+            ("SMITH", "Michael"): ("SMITH", "MICHAEL")
+        }
+        result = resolve_canonical_name(("SMITH", "Mike"), normalizations)
+        assert result == ("SMITH", "MICHAEL")
+
+
+class TestChooseRiderTarget:
+    """Tests for the choose_rider_target function."""
+    
+    def test_frequency_preference(self):
+        """Test that more frequent name is chosen."""
+        counts = {("SMITH", "John"): 5, ("SMITH", "Jon"): 2}
+        target = choose_rider_target(("SMITH", "John"), ("SMITH", "Jon"), counts)
+        assert target == ("SMITH", "John")
+    
+    def test_length_preference_when_frequency_equal(self):
+        """Test that longer name is chosen when frequency is equal."""
+        counts = {("SMITH", "John"): 3, ("SMITH", "Jonathan"): 3}
+        target = choose_rider_target(("SMITH", "John"), ("SMITH", "Jonathan"), counts)
+        assert target == ("SMITH", "Jonathan")  # Longer first name
+    
+    def test_alphabetical_preference_when_equal(self):
+        """Test that alphabetical order is used when frequency and length are equal."""
+        counts = {("SMITH", "John"): 3, ("JONES", "John"): 3}
+        target = choose_rider_target(("SMITH", "John"), ("JONES", "John"), counts)
+        # SMITH > JONES alphabetically
+        assert target == ("SMITH", "John")
+    
+    def test_no_counts(self):
+        """Test behavior when counts are not provided."""
+        counts = {}
+        target = choose_rider_target(("SMITH", "John"), ("SMITH", "Jonathan"), counts)
+        assert target == ("SMITH", "Jonathan")  # Longer name wins
+
+
+class TestChooseTeamTarget:
+    """Tests for the choose_team_target function."""
+    
+    def test_frequency_preference(self):
+        """Test that more frequent team name is chosen."""
+        counts = {"Team A": 5, "Team B": 2}
+        target = choose_team_target("Team A", "Team B", counts)
+        assert target == "Team A"
+    
+    def test_length_preference_when_frequency_equal(self):
+        """Test that longer team name is chosen when frequency is equal."""
+        counts = {"Team": 3, "Team Cycling Club": 3}
+        target = choose_team_target("Team", "Team Cycling Club", counts)
+        assert target == "Team Cycling Club"
+    
+    def test_alphabetical_preference_when_equal(self):
+        """Test that alphabetical order is used when frequency and length are equal."""
+        counts = {"Team A": 3, "Team B": 3}
+        target = choose_team_target("Team A", "Team B", counts)
+        assert target == "Team B"  # "Team B" > "Team A" alphabetically
+
+
+class TestNormalizeRiderAndTeamNames:
+    """Tests for the normalize_rider_and_team_names function."""
+    
+    def test_exact_match_case_insensitive(self):
+        """Test that case-insensitive exact matches are normalized."""
+        all_results = {
+            'mens': {
+                '1': [
+                    {'last_name': 'SMITH', 'first_name': 'John', 'team': 'Team A', 'position': 1, 'points': 100}
+                ],
+                '2': [
+                    {'last_name': 'Smith', 'first_name': 'john', 'team': 'Team A', 'position': 1, 'points': 100}
+                ]
+            }
+        }
+        rider_norms, team_norms = normalize_rider_and_team_names(all_results)
+        
+        # Should normalize case variations to one canonical form
+        # Check that results are normalized
+        assert all_results['mens']['1'][0]['last_name'] == all_results['mens']['2'][0]['last_name']
+        assert all_results['mens']['1'][0]['first_name'] == all_results['mens']['2'][0]['first_name']
+    
+    def test_similar_rider_names(self):
+        """Test that similar rider names are normalized."""
+        all_results = {
+            'mens': {
+                '1': [
+                    {'last_name': 'SMITH', 'first_name': 'Michael', 'team': 'Team A', 'position': 1, 'points': 100}
+                ],
+                '2': [
+                    {'last_name': 'SMITH', 'first_name': 'Mike', 'team': 'Team A', 'position': 1, 'points': 100}
+                ]
+            }
+        }
+        rider_norms, team_norms = normalize_rider_and_team_names(all_results)
+        
+        # Should normalize Mike -> Michael (or vice versa based on frequency)
+        # Check that both results have the same normalized name
+        norm1 = (all_results['mens']['1'][0]['last_name'], all_results['mens']['1'][0]['first_name'])
+        norm2 = (all_results['mens']['2'][0]['last_name'], all_results['mens']['2'][0]['first_name'])
+        assert norm1 == norm2
+    
+    def test_similar_team_names(self):
+        """Test that similar team names are normalized."""
+        all_results = {
+            'mens': {
+                '1': [
+                    {'last_name': 'SMITH', 'first_name': 'John', 'team': 'Kingston Wheelers', 'position': 1, 'points': 100}
+                ],
+                '2': [
+                    {'last_name': 'SMITH', 'first_name': 'John', 'team': 'Kingston Wheelers CC', 'position': 1, 'points': 100}
+                ]
+            }
+        }
+        rider_norms, team_norms = normalize_rider_and_team_names(all_results)
+        
+        # Should normalize similar team names
+        # The more frequent or longer name should be chosen
+        team1 = all_results['mens']['1'][0]['team']
+        team2 = all_results['mens']['2'][0]['team']
+        # They should be normalized to the same name
+        assert team1 == team2
+    
+    def test_predefined_team_normalizations(self):
+        """Test that predefined team normalizations are applied."""
+        all_results = {
+            'mens': {
+                '1': [
+                    {'last_name': 'SMITH', 'first_name': 'John', 'team': 'LEC', 'position': 1, 'points': 100}
+                ]
+            }
+        }
+        rider_norms, team_norms = normalize_rider_and_team_names(all_results)
+        
+        # LEC should be normalized to Limited Edition Cycling
+        assert all_results['mens']['1'][0]['team'] == 'Limited Edition Cycling'
+        assert 'LEC' in team_norms
+        assert team_norms['LEC'] == 'Limited Edition Cycling'
+    
+    def test_frequency_based_target_selection(self):
+        """Test that more frequent names are chosen as targets."""
+        all_results = {
+            'mens': {
+                '1': [
+                    {'last_name': 'SMITH', 'first_name': 'John', 'team': 'Team A', 'position': 1, 'points': 100}
+                ],
+                '2': [
+                    {'last_name': 'SMITH', 'first_name': 'John', 'team': 'Team A', 'position': 1, 'points': 100}
+                ],
+                '3': [
+                    {'last_name': 'SMITH', 'first_name': 'Jon', 'team': 'Team A', 'position': 1, 'points': 100}
+                ]
+            }
+        }
+        rider_norms, team_norms = normalize_rider_and_team_names(all_results)
+        
+        # "John" appears twice, "Jon" once - "John" should be the target
+        # All should normalize to "John"
+        for round_results in all_results['mens'].values():
+            for result in round_results:
+                assert result['first_name'] == 'John'
+    
+    def test_multiple_rounds_normalization(self):
+        """Test normalization across multiple rounds."""
+        all_results = {
+            'mens': {
+                '1': [
+                    {'last_name': 'ANDERSON', 'first_name': 'Luke', 'team': 'Team A', 'position': 1, 'points': 100}
+                ],
+                '2': [
+                    {'last_name': 'ANDERSON', 'first_name': 'Luke', 'team': 'Team A', 'position': 1, 'points': 100}
+                ],
+                '3': [
+                    {'last_name': 'ANDERSEN', 'first_name': 'Luke', 'team': 'Team A', 'position': 1, 'points': 100}
+                ]
+            }
+        }
+        rider_norms, team_norms = normalize_rider_and_team_names(all_results)
+        
+        # ANDERSEN should normalize to ANDERSON (more frequent)
+        for round_results in all_results['mens'].values():
+            for result in round_results:
+                assert result['last_name'] == 'ANDERSON'
+    
+    def test_team_name_similarity_threshold(self):
+        """Test that team names with similarity >= 0.8 are normalized."""
+        all_results = {
+            'mens': {
+                '1': [
+                    {'last_name': 'SMITH', 'first_name': 'John', 'team': 'Bigfoot', 'position': 1, 'points': 100}
+                ],
+                '2': [
+                    {'last_name': 'SMITH', 'first_name': 'John', 'team': 'Bigfoot CC', 'position': 1, 'points': 100}
+                ]
+            }
+        }
+        rider_norms, team_norms = normalize_rider_and_team_names(all_results)
+        
+        # Similar team names should be normalized
+        team1 = all_results['mens']['1'][0]['team']
+        team2 = all_results['mens']['2'][0]['team']
+        # They should normalize to the same name (frequency or length determines which)
+        assert team1 == team2
+    
+    def test_no_false_matches(self):
+        """Test that different people don't get normalized together."""
+        all_results = {
+            'mens': {
+                '1': [
+                    {'last_name': 'SMITH', 'first_name': 'John', 'team': 'Team A', 'position': 1, 'points': 100},
+                    {'last_name': 'JONES', 'first_name': 'Mary', 'team': 'Team B', 'position': 2, 'points': 94}
+                ]
+            }
+        }
+        rider_norms, team_norms = normalize_rider_and_team_names(all_results)
+        
+        # Different people should remain different
+        assert all_results['mens']['1'][0]['last_name'] == 'SMITH'
+        assert all_results['mens']['1'][1]['last_name'] == 'JONES'
+        assert all_results['mens']['1'][0]['first_name'] == 'John'
+        assert all_results['mens']['1'][1]['first_name'] == 'Mary'
 
