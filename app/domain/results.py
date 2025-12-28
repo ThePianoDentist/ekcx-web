@@ -115,6 +115,11 @@ def build_results_sections(year: int, round_num: int) -> List[Dict[str, Any]]:
         if df.empty:
             continue
 
+        # Fix positions to be sequential (1, 2, 3...) based on row order
+        # Files are always ordered, so positions should go 1,2,3,4,5,6,7,8 etc.
+        if 'Position' in df.columns:
+            df['Position'] = range(1, len(df) + 1)
+
         table_html = df.to_html(index=False, border=0, classes='event-results-table', na_rep='')
         section_title = _map_filename_to_title(path.stem)
         results_sections.append({'title': section_title, 'html': table_html})

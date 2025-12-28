@@ -151,7 +151,9 @@ def read_race_result(file_path: Path) -> pd.DataFrame:
         if df.empty:
             return pd.DataFrame()
         
-        df['Pos'] = df['Pos'].astype(int)
+        # Fix positions to be sequential (1, 2, 3...) based on row order
+        # Files are always ordered, so positions should go 1,2,3,4,5,6,7,8 etc.
+        df['Pos'] = range(1, len(df) + 1)
         
         # Clean up the data
         df['Last Name'] = df['Last Name'].fillna('').astype(str)
@@ -499,6 +501,33 @@ def normalize_rider_and_team_names(all_results: Dict[str, Dict[str, List[Dict]]]
             if existing != target:
                 rider_normalizations[existing] = target
                 print(f"Rider normalized (exact match): {existing} -> {target}")
+    
+    # Pass 1.5: Add predefined rider normalizations (before similarity matching)
+    # Handle predefined normalizations with case-insensitive matching
+    normalized_target = ('MERRINGTON', 'Hannah')
+    danielle_target = ('PETERSMANN', 'Danielle')
+    
+    for rider in all_riders:
+        rider_last_upper = rider[0].upper()
+        rider_first_title = rider[1].title()
+        
+        # Hannah Merrington/Nicholson normalization
+        # Normalize both Nicholson and any variant of Merrington (with 1 or 2 R's) to MERRINGTON
+        if rider_first_title == 'Hannah' and (rider_last_upper == 'NICHOLSON' or 
+                                               rider_last_upper == 'MERINGTON' or 
+                                               rider_last_upper == 'MERRINGTON'):
+            if rider != normalized_target:
+                rider_normalizations[rider] = normalized_target
+                print(f"Rider normalized (predefined): {rider} -> {normalized_target}")
+        
+        # Danielle Petersmann normalization
+        # Handle both "Daniel PETERSMAN" (misspelled first and last) and "Daniel PETERSMANN" (misspelled first only)
+        # Also handle "Danielle PETERSMAN" (misspelled last only)
+        if ((rider_last_upper == 'PETERSMAN' or rider_last_upper == 'PETERSMANN') and 
+            (rider_first_title == 'Daniel' or rider_first_title == 'Danielle')):
+            if rider != danielle_target:
+                rider_normalizations[rider] = danielle_target
+                print(f"Rider normalized (predefined): {rider} -> {danielle_target}")
     
     # Pass 2: Global similarity matching for riders
     riders_list = sorted(list(all_riders))
