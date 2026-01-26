@@ -75,7 +75,8 @@ async def event_detail(request: Request, year: int, round_num: int):
                 "date": "January 18, 2026",
                 "location": "Betteshanger Country Park, Deal",
                 "british_cycling_url": "https://www.britishcycling.org.uk/events?q=East+Kent+Cyclo+Cross+Round+5",
-                "status": "upcoming"
+                "photos_url": "https://mattbristow.photoshelter.com/gallery-collection/ROUND-5-Betteshanger-Park-18-01-2026/C0000eTX6kiUv_i8",
+                "status": "completed"
             }
         }
     }

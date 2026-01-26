@@ -680,8 +680,47 @@ def calculate_standings(all_results: Dict[str, Dict[str, List[Dict]]]) -> Dict[s
     return standings
 
 
-def generate_html_table_row(position: int, rider: Dict, max_rounds: int, is_youth: bool = False) -> str:
+def get_medal_icon(position: int) -> str:
+    """Get medal icon for position 1, 2, or 3."""
+    if position == 1:
+        return '🥇'
+    elif position == 2:
+        return '🥈'
+    elif position == 3:
+        return '🥉'
+    return ''
+
+
+def get_category_medal_for_rider(rider: Dict, category_medals: Dict[tuple, int], is_youth: bool = False) -> str:
+    """Get medal icon for a rider based on their category value ranking.
+    
+    Args:
+        rider: Rider dict with category, points_excl_lowest, and optionally gender
+        category_medals: Dict mapping medal key to medal position (1, 2, or 3)
+        is_youth: If True, medals are based on category + gender combination (for youth and u12)
+    """
+    category_value = normalize_category(rider['category']) if rider['category'] else ''
+    if not category_value:
+        return ''
+    
+    # For youth, use category + gender as the key; otherwise just category
+    if is_youth:
+        gender = rider.get('gender', '').strip().upper()
+        medal_key = (category_value, gender, rider['points_excl_lowest'])
+    else:
+        medal_key = (category_value, rider['points_excl_lowest'])
+    
+    if medal_key in category_medals:
+        medal_pos = category_medals[medal_key]
+        return get_medal_icon(medal_pos)
+    return ''
+
+
+def generate_html_table_row(position: int, rider: Dict, max_rounds: int, is_youth: bool = False, category_medals: Dict[tuple, int] = None) -> str:
     """Generate an HTML table row for a rider."""
+    if category_medals is None:
+        category_medals = {}
+    
     row_style = ' style="background: #CCCCCC;"' if position % 2 == 0 else ''
     
     # Determine if we should show "Points excluding lowest" column (when 3+ rounds)
@@ -699,7 +738,18 @@ def generate_html_table_row(position: int, rider: Dict, max_rounds: int, is_yout
     round_cols_str = '\n'.join(round_cols)
     
     team_display = rider['team'] if rider['team'] else '<br>'
-    category_display = normalize_category(rider['category']) if rider['category'] else ''
+    category_value = normalize_category(rider['category']) if rider['category'] else ''
+    
+    # Add medal icon before category value for top 3 in each category
+    category_medal_icon = get_category_medal_for_rider(rider, category_medals, is_youth)
+    category_display = f'{category_medal_icon} {category_value}' if category_medal_icon else category_value
+    
+    # Add medal icon before last name for positions 1, 2, 3
+    # Only show position medals if we have all 5 rounds
+    medal_icon = ''
+    if max_rounds >= 5:
+        medal_icon = get_medal_icon(position)
+    last_name_display = f'{medal_icon} {rider["last_name"]}' if medal_icon else rider['last_name']
     
     # Points columns - regular points (non-bold), and points excluding lowest (bold) if applicable
     if show_points_excl_lowest:
@@ -712,7 +762,7 @@ def generate_html_table_row(position: int, rider: Dict, max_rounds: int, is_yout
         gender_display = rider.get('gender', '')
         return f'''	<tr>
 		<td height="20" align="left"{row_style} sdval="{position}" sdnum="2057;0;@"><font face="Liberation Serif" size=3 color="#000000">{position}</font></td>
-		<td align="left"{row_style}><font face="Liberation Serif" size=3 color="#000000">{rider['last_name']}</font></td>
+		<td align="left"{row_style}><font face="Liberation Serif" size=3 color="#000000">{last_name_display}</font></td>
 		<td align="left"{row_style}><font face="Liberation Serif" size=3 color="#000000">{rider['first_name']}</font></td>
 		<td align="left"{row_style}><font face="Liberation Serif" size=3 color="#000000">{team_display}</font></td>
 		<td align="left"{row_style}><font face="Liberation Serif" size=3 color="#000000">{category_display}</font></td>
@@ -723,7 +773,7 @@ def generate_html_table_row(position: int, rider: Dict, max_rounds: int, is_yout
     else:
         return f'''	<tr>
 		<td height="20" align="left"{row_style} sdval="{position}" sdnum="2057;0;@"><font face="Liberation Serif" size=3 color="#000000">{position}</font></td>
-		<td align="left"{row_style}><font face="Liberation Serif" size=3 color="#000000">{rider['last_name']}</font></td>
+		<td align="left"{row_style}><font face="Liberation Serif" size=3 color="#000000">{last_name_display}</font></td>
 		<td align="left"{row_style}><font face="Liberation Serif" size=3 color="#000000">{rider['first_name']}</font></td>
 		<td align="left"{row_style}><font face="Liberation Serif" size=3 color="#000000">{team_display}</font></td>
 		<td align="left"{row_style}><font face="Liberation Serif" size=3 color="#000000">{category_display}</font></td>
@@ -752,9 +802,99 @@ def calculate_max_team_width(standings: List[Dict]) -> int:
     return calculated_width
 
 
+def calculate_category_medals(standings: List[Dict], is_youth: bool = False, max_rounds: int = 0) -> Dict[tuple, int]:
+    """
+    Calculate medal positions for each category value (e.g., "Senior", "Ma40") 
+    based on points_excl_lowest.
+    
+    For youth and u12 categories, medals are calculated separately for each combination of 
+    category value and gender.
+    
+    Medals are only calculated if max_rounds >= 5 (all 5 rounds completed).
+    
+    Args:
+        standings: List of rider dicts
+        is_youth: If True, group by category + gender; otherwise just by category
+        max_rounds: Maximum number of rounds. Medals only shown if >= 5.
+    
+    Returns a dict mapping medal key to medal position (1, 2, or 3).
+    For non-youth/u12: (category_value, points_excl_lowest) -> medal position
+    For youth/u12: (category_value, gender, points_excl_lowest) -> medal position
+    """
+    # Only calculate medals if we have all 5 rounds
+    if max_rounds < 5:
+        return {}
+    
+    category_medals = {}
+    
+    if is_youth:
+        # For youth, group by category value AND gender
+        riders_by_category_gender = defaultdict(list)
+        for rider in standings:
+            category_value = normalize_category(rider['category']) if rider['category'] else ''
+            gender = rider.get('gender', '').strip().upper()
+            if category_value:
+                key = (category_value, gender)
+                riders_by_category_gender[key].append(rider)
+        
+        # For each category+gender combination, find top 3 by points_excl_lowest
+        for (category_value, gender), riders in riders_by_category_gender.items():
+            # Sort by points_excl_lowest descending, then total_points descending
+            sorted_riders = sorted(riders, key=lambda x: (-x['points_excl_lowest'], -x['total_points']))
+            
+            # Track unique points_excl_lowest values to assign medals
+            seen_points = []
+            medal_position = 1
+            
+            for rider in sorted_riders:
+                points = rider['points_excl_lowest']
+                if points not in seen_points:
+                    seen_points.append(points)
+                    if medal_position <= 3:
+                        medal_key = (category_value, gender, points)
+                        category_medals[medal_key] = medal_position
+                        medal_position += 1
+                    else:
+                        break
+    else:
+        # For non-youth, group by category value only
+        riders_by_category = defaultdict(list)
+        for rider in standings:
+            category_value = normalize_category(rider['category']) if rider['category'] else ''
+            if category_value:
+                riders_by_category[category_value].append(rider)
+        
+        # For each category value, find top 3 by points_excl_lowest
+        for category_value, riders in riders_by_category.items():
+            # Sort by points_excl_lowest descending, then total_points descending
+            sorted_riders = sorted(riders, key=lambda x: (-x['points_excl_lowest'], -x['total_points']))
+            
+            # Track unique points_excl_lowest values to assign medals
+            seen_points = []
+            medal_position = 1
+            
+            for rider in sorted_riders:
+                points = rider['points_excl_lowest']
+                if points not in seen_points:
+                    seen_points.append(points)
+                    if medal_position <= 3:
+                        medal_key = (category_value, points)
+                        category_medals[medal_key] = medal_position
+                        medal_position += 1
+                    else:
+                        break
+    
+    return category_medals
+
+
 def generate_category_html(category: str, standings: List[Dict], max_rounds: int, title: str) -> str:
     """Generate HTML for a category standings table."""
-    is_youth = category == 'youth'
+    is_youth = category == 'youth' or category == 'u12'
+    
+    # Calculate medals for each category value (e.g., "Senior", "Ma40")
+    # For youth and u12, medals are calculated separately for each category+gender combination
+    # Medals are only shown if we have all 5 rounds (max_rounds >= 5)
+    category_medals = calculate_category_medals(standings, is_youth, max_rounds)
     
     # Calculate dynamic team column width
     team_width = calculate_max_team_width(standings)
@@ -815,7 +955,7 @@ def generate_category_html(category: str, standings: List[Dict], max_rounds: int
     # Rows
     rows = []
     for position, rider in enumerate(standings, 1):
-        rows.append(generate_html_table_row(position, rider, max_rounds, is_youth))
+        rows.append(generate_html_table_row(position, rider, max_rounds, is_youth, category_medals))
     
     footer = '''</table>
 '''
