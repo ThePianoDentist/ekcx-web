@@ -916,7 +916,7 @@ def generate_category_html(category: str, standings: List[Dict], max_rounds: int
 	<colgroup width="116"></colgroup>
 	<colgroup width="90"></colgroup>
 	<colgroup width="{team_width}"></colgroup>
-	<colgroup width="84"></colgroup>
+	<colgroup width="110"></colgroup>
 	<colgroup width="62"></colgroup>
 	<colgroup span="{max_rounds}" width="36"></colgroup>
 	{points_cols}
