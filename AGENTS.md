@@ -19,6 +19,7 @@ When editing AGENTS.md: stay very concise. No fluff, examples, or restating othe
 
 - After each task: fix docs if they drifted.
 - `git pull` main before branching; tests green before `git push`.
+- Before every `git push`: run [pre-push](.cursor/skills/pre-push/SKILL.md) (secrets + security sweep). Never push secrets; scrub them from *all* commits first.
 - Prefer `uv` / `make` (see README).
 - SQLite-compatible SQL only.
 
