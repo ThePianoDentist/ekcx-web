@@ -12,7 +12,9 @@ Run before every `git push`. Do not push until both checks pass.
 
 ## 1. Secrets
 
-Scan the commits about to be pushed (`git log origin/<branch>..HEAD` and their diffs), plus the working tree if dirty.
+**Token-efficient scan:** start with `git log --stat origin/<branch>..HEAD` and `git diff --name-only origin/<branch>..HEAD` to identify changed files. Use `rg` (ripgrep) with secret patterns against only those files rather than dumping full diffs into context. Only read the full diff of a file if a pattern matches or the filename itself is suspicious (`.env`, `credentials.*`, `*secret*`, `*.pem`, `*.key`).
+
+Also check the working tree if dirty.
 
 Look for (non-exhaustive):
 
@@ -33,7 +35,9 @@ Prefer `git filter-repo` or a targeted rebase for scrubbing. Do not leave secret
 
 ## 2. Security sweep
 
-Review the same push range for common issues introduced or worsened by the changes:
+**Token-efficient review:** use `git diff --stat origin/<branch>..HEAD` to gauge scope. For delete-only changes or non-code files (docs, configs with no secrets), skip the full diff and note "no new code to review". Otherwise read only the added/modified hunks for files that could introduce vulnerabilities.
+
+Look for common issues introduced or worsened by the changes:
 
 - Injection (SQL, command, template/XSS)
 - Authn/authz gaps (missing checks, IDOR)
