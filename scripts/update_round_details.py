@@ -2,7 +2,7 @@
 Script to update round details when an event is completed.
 
 This script automates the process of:
-1. Updating the event status from "upcoming" to "completed" in main.py
+1. Updating the event status from "upcoming" to "completed" in app/events/interfaces/web/routes.py
 2. Updating the status display in events.html
 3. Generating results JSON from the results folder
 4. Optionally adding/updating photos_url
@@ -23,14 +23,14 @@ from app.domain.results import build_results_sections, save_results_to_json
 
 
 def update_main_py_status(year: int, round_num: int, photos_url: Optional[str] = None) -> bool:
-    """Update the status in main.py from 'upcoming' to 'completed' and optionally add photos_url."""
-    main_py_path = Path(__file__).resolve().parents[1] / "main.py"
-    
-    if not main_py_path.exists():
-        print(f"Error: {main_py_path} not found")
+    """Update the status in events routes from 'upcoming' to 'completed' and optionally add photos_url."""
+    routes_path = Path(__file__).resolve().parents[1] / "app" / "events" / "interfaces" / "web" / "routes.py"
+
+    if not routes_path.exists():
+        print(f"Error: {routes_path} not found")
         return False
-    
-    content = main_py_path.read_text(encoding='utf-8')
+
+    content = routes_path.read_text(encoding='utf-8')
     
     # Find the event entry for this round
     # Pattern to match the round entry: round_num: { ... }
@@ -39,7 +39,7 @@ def update_main_py_status(year: int, round_num: int, photos_url: Optional[str] =
     match = re.search(pattern, content, re.MULTILINE)
     
     if not match:
-        print(f"Error: Could not find round {round_num} in main.py")
+        print(f"Error: Could not find round {round_num} in events routes")
         return False
     
     indent = match.group(1)
@@ -65,7 +65,7 @@ def update_main_py_status(year: int, round_num: int, photos_url: Optional[str] =
     if '"status": "upcoming"' in event_content:
         event_content = event_content.replace('"status": "upcoming"', '"status": "completed"')
     elif '"status": "completed"' in event_content:
-        print(f"Round {round_num} already marked as completed in main.py")
+        print(f"Round {round_num} already marked as completed in events routes")
     else:
         print(f"Warning: Could not find status field in round {round_num}")
     
@@ -97,8 +97,8 @@ def update_main_py_status(year: int, round_num: int, photos_url: Optional[str] =
     # Replace the matched section
     new_content = content[:match.start()] + f'{indent}{round_num}: {{\n{event_content}\n{indent}}}' + content[pos:]
     
-    main_py_path.write_text(new_content, encoding='utf-8')
-    print(f"✓ Updated main.py for round {round_num}")
+    routes_path.write_text(new_content, encoding='utf-8')
+    print(f"✓ Updated events routes for round {round_num}")
     return True
 
 

@@ -37,7 +37,7 @@ Admin is near-term: upload results, edit events, declare rider merges. Colocatin
 
 ## Current vs target
 
-Today: `app/domain/results.py` + JSON under domain; routes in root `main.py`; scripts at repo root. Target: move into `app/results/...` (and sibling slices) as we touch each area.
+Today: `app/domain/results.py` + JSON under domain; routes in slice `interfaces/web` modules; `main.py` wires routers only; scripts at repo root. Target: move domain/data into `app/results/...` (and sibling slices) as we touch each area.
 
 ## SQLite
 
