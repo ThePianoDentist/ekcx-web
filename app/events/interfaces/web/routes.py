@@ -60,6 +60,40 @@ async def event_detail(request: Request, year: int, round_num: int):
                 "photos_url": "https://mattbristow.photoshelter.com/gallery-collection/ROUND-5-Betteshanger-Park-18-01-2026/C0000eTX6kiUv_i8",
                 "status": "completed"
             }
+        },
+        2026: {
+            1: {
+                "name": "Round 1: Sandwich",
+                "date": "September 13, 2026",
+                "location": "Sandwich",
+                "british_cycling_url": "https://www.britishcycling.org.uk/events/details/338429/East-Kent-Cyclo-Cross-League-Round-1-SandwichTechCross---Tim-Mountford-Memorial-",
+                "status": "upcoming"
+            },
+            2: {
+                "name": "Round 2: Dover",
+                "date": "October 18, 2026",
+                "location": "Dover",
+                "british_cycling_url": "https://www.britishcycling.org.uk/events/details/340011/East-Kent-Cyclo-Cross-League-Round-2-DukeofYorksCross",
+                "status": "upcoming"
+            },
+            3: {
+                "name": "Round 3: TBC",
+                "date": "November 15, 2026",
+                "location": "TBC",
+                "status": "upcoming"
+            },
+            4: {
+                "name": "Round 4: Lydden",
+                "date": "December 13, 2026",
+                "location": "Lydden",
+                "status": "upcoming"
+            },
+            5: {
+                "name": "Round 5: Betteshanger",
+                "date": "January 17, 2027",
+                "location": "Betteshanger",
+                "status": "upcoming"
+            }
         }
     }
 
