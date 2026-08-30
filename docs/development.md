@@ -6,12 +6,14 @@ Checkout a new branch for each feature or fix. Don't commit straight to `main`.
 
 ## PRDs
 
+Open a Feature issue first.
+
 For anything more than a minor change or small fix, write an AI-generated PRD before coding.
 
 - Put it in [`docs/PRDs/`](PRDs/), named after the GitHub issue (e.g. `123-rider-normalisation.md`).
 - Reference the issue number in the PRD.
 
-Skip a PRD for typos, tiny copy tweaks, and similarly small fixes.
+Skip a PRD for typos, tiny copy tweaks, and similarly small fixes. Bugs use the Bug issue template; no PRD.
 
 ## Shipping
 
