@@ -2,7 +2,15 @@ server {
     listen [::]:80;
     listen 80;
     server_name www.ekcx.co.uk ekcx.co.uk;
-    return 301 https://$host$request_uri;
+
+    # Certbot webroot is /usr/share/nginx/html; do not redirect ACME challenges.
+    location /.well-known/acme-challenge/ {
+        root /usr/share/nginx/html;
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
 }
 
 server {
@@ -20,6 +28,11 @@ server {
 
     add_header X-Content-Type-Options "nosniff" always;
     add_header X-XSS-Protection "1; mode=block" always;
+
+    # Let's Encrypt follows HTTP→HTTPS; serve challenges here too, not the app.
+    location /.well-known/acme-challenge/ {
+        root /usr/share/nginx/html;
+    }
 
     location / {
         # needed to chmod +x home/jdog folder for nginx to be able to access the socket.
