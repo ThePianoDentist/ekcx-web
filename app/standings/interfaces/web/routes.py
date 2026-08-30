@@ -9,7 +9,7 @@ router = APIRouter()
 
 @router.get("/standings/{year}/{category}", response_class=HTMLResponse)
 async def standings(request: Request, category: str, year: int):
-    year = year or 2025
+    year = year or 2026
     return templates.TemplateResponse(
         request=request,
         name="standings.html",
