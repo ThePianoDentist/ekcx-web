@@ -28,6 +28,7 @@ Workflow: [docs/development.md](docs/development.md) (branches, PRDs, PRs).
   - No dev/staging site yet, but with so few dependencies, it's very easy to test locally.
 - No database server yet. We'll stick with SQLite whilst in development, but add a Postgres DB instance when ready.
 - Configuration files the server needs live in `/conf`. We use nginx as a reverse-proxy in front of the Python server. We use systemd for running the webserver.
+- Certbot renews `ekcx.co.uk` via webroot (`/usr/share/nginx/html`). Nginx must serve `/.well-known/acme-challenge/` from that path on both HTTP and HTTPS; do not redirect or proxy it to the app. Automatic renewal is already handled by `snap.certbot.renew.timer` — do not add a cron job.
 
 ## Setup
 
