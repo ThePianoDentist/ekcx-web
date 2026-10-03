@@ -236,7 +236,16 @@ class TestDetermineCategoryFromFilename:
         assert determine_category_from_filename("V50 Open-r6-.xlsx") == "v50"
         assert determine_category_from_filename("M50 Open-r6-.xlsx") == "v50"
         assert determine_category_from_filename("EKCX 2025 V50 Open-r6-.xlsx") == "v50"
-    
+        assert determine_category_from_filename("EKCX 2026 Sandwich R1 Masters 50-r6-.xlsx") == "v50"
+
+    def test_masters_40(self):
+        """2026 exports use Masters 40 rather than V40."""
+        assert determine_category_from_filename("EKCX 2026 Sandwich R1 Masters 40-r4-.xlsx") == "v40"
+
+    def test_try_cx_does_not_score(self):
+        """Try CX is a participation race and is left out of the standings."""
+        assert determine_category_from_filename("EKCX 2026 Sandwich R1 Try CX-r2-.xlsx") == "skip"
+
     def test_unknown_category(self):
         """Test that unknown categories return 'unknown'."""
         assert determine_category_from_filename("Unknown Category.xlsx") == "unknown"

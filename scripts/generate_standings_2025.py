@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 """
-Generate 2025 standings from race results.
+Generate standings from race results.
 
-This script reads Excel files from results/2025/ and generates standings HTML files.
+Reads Excel files from results/<year>/ and writes templates/standings/<year>/.
+Defaults to 2025. Pass a year to generate another season: python scripts/generate_standings_2025.py 2026
 """
 
 import pandas as pd
 import re
+import sys
 from pathlib import Path
 from collections import defaultdict
 from typing import Dict, List, Tuple, Optional, Any
@@ -171,8 +173,12 @@ def read_race_result(file_path: Path) -> pd.DataFrame:
 def determine_category_from_filename(filename: str) -> str:
     """Determine the category from the filename. Note: Round number is determined by directory, not filename."""
     filename_lower = filename.lower()
-    
-    # Map filenames to categories (ignoring R3, R4, R5, R6 in filename - round is determined by directory)
+
+    # Try CX is a participation race and does not score league points.
+    if 'try cx' in filename_lower or 'trycx' in filename_lower:
+        return 'skip'
+
+    # Map filenames to categories (ignoring race numbers in the filename — round is the directory).
     if 'elite female' in filename_lower or 'elite women' in filename_lower:
         return 'womens'
     elif 'elite open' in filename_lower or 'senior open' in filename_lower or 'senior' in filename_lower:
@@ -181,10 +187,10 @@ def determine_category_from_filename(filename: str) -> str:
         return 'u12'
     elif 'under 16' in filename_lower or 'u16' in filename_lower:
         return 'youth'
-    elif 'v40' in filename_lower or 'm40' in filename_lower:
-        return 'v40'
-    elif 'v50' in filename_lower or 'm50' in filename_lower:
+    elif 'masters 50' in filename_lower or 'masters50' in filename_lower or 'v50' in filename_lower or 'm50' in filename_lower:
         return 'v50'
+    elif 'masters 40' in filename_lower or 'masters40' in filename_lower or 'v40' in filename_lower or 'm40' in filename_lower:
+        return 'v40'
     else:
         return 'unknown'
 
@@ -209,6 +215,8 @@ def collect_results(results_dir: Path) -> Dict[str, Dict[str, List[Dict]]]:
         # Process each Excel file in the round directory
         for excel_file in sorted(round_dir.glob('*.xlsx')):
             category = determine_category_from_filename(excel_file.name)
+            if category == 'skip':
+                continue
             if category == 'unknown':
                 print(f"Warning: Could not determine category for {excel_file.name}")
                 continue
@@ -1014,7 +1022,7 @@ def calculate_team_standings(all_results: Dict[str, Dict[str, List[Dict]]],
     return team_standings
 
 
-def generate_teams_html(team_standings: List[Dict]) -> str:
+def generate_teams_html(team_standings: List[Dict], join_open: bool = False) -> str:
     """Generate HTML for team standings table."""
     # Calculate dynamic team column width
     max_length = 0
@@ -1030,6 +1038,9 @@ def generate_teams_html(team_standings: List[Dict]) -> str:
     else:
         team_width = max(200, min(max_length * 8, 400))
     
+    open_header = 'Senior/M40' if join_open else 'Senior Open'
+    v40_header = '' if join_open else '\n\t\t<td align="center" style="background: #000000; color: white" sdnum="2057;0;@"><b><font face="Liberation Serif" size=3>V40</font></b></td>'
+    age_cols = '<colgroup width="45"></colgroup>' if join_open else '<colgroup span="2" width="45"></colgroup>'
     header = f'''<div><h2>Teams</h2></div>
 <table cellspacing="0" border="0" style="width: 100%;">
 	<colgroup width="67"></colgroup>
@@ -1037,16 +1048,15 @@ def generate_teams_html(team_standings: List[Dict]) -> str:
 	<colgroup width="98"></colgroup>
 	<colgroup width="86"></colgroup>
 	<colgroup span="2" width="77"></colgroup>
-	<colgroup span="2" width="45"></colgroup>
+	{age_cols}
 	<colgroup width="55"></colgroup>
 	<tr>
 		<td height="20" align="left" style="background: #000000; color: white" sdnum="2057;0;@"><b><font face="Liberation Serif" size=3>Position</font></b></td>
 		<td align="left" style="background: #000000; color: white" sdnum="2057;0;@"><b><font face="Liberation Serif" size=3>Team</font></b></td>
 		<td align="center" style="background: #000000; color: white" sdnum="2057;0;@"><b><font face="Liberation Serif" size=3>Women</font></b></td>
-		<td align="center" style="background: #000000; color: white" sdnum="2057;0;@"><b><font face="Liberation Serif" size=3>Senior Open</font></b></td>
+		<td align="center" style="background: #000000; color: white" sdnum="2057;0;@"><b><font face="Liberation Serif" size=3>{open_header}</font></b></td>
 		<td align="center" style="background: #000000; color: white" sdnum="2057;0;@"><b><font face="Liberation Serif" size=3>Under 12</font></b></td>
-		<td align="center" style="background: #000000; color: white" sdnum="2057;0;@"><b><font face="Liberation Serif" size=3>Under 16</font></b></td>
-		<td align="center" style="background: #000000; color: white" sdnum="2057;0;@"><b><font face="Liberation Serif" size=3>V40</font></b></td>
+		<td align="center" style="background: #000000; color: white" sdnum="2057;0;@"><b><font face="Liberation Serif" size=3>Under 16</font></b></td>{v40_header}
 		<td align="center" style="background: #000000; color: white" sdnum="2057;0;@"><b><font face="Liberation Serif" size=3>V50</font></b></td>
 		<td align="center" style="background: #000000; color: white" sdnum="2057;0;@"><b><font face="Liberation Serif" size=3>Points</font></b></td>
 	</tr>'''
@@ -1061,14 +1071,16 @@ def generate_teams_html(team_standings: List[Dict]) -> str:
             else:
                 return f'<font face="Liberation Serif" size=3 color="#000000">{value}</font>'
         
+        open_points = team_data['mens'] + team_data['v40'] if join_open else team_data['mens']
+        v40_cell = '' if join_open else f'''
+		<td align="center"{row_style} sdval="{team_data['v40']}" sdnum="2057;">{format_cell(team_data['v40'])}</td>'''
         rows.append(f'''	<tr>
 		<td height="20" align="left"{row_style} sdnum="2057;0;@"><font face="Liberation Serif" size=3 color="#000000">{position}</font></td>
 		<td align="left"{row_style}><font face="Liberation Serif" size=3 color="#000000">{team_data['team']}</font></td>
 		<td align="center"{row_style} sdval="{team_data['womens']}" sdnum="2057;">{format_cell(team_data['womens'])}</td>
-		<td align="center"{row_style} sdval="{team_data['mens']}" sdnum="2057;">{format_cell(team_data['mens'])}</td>
+		<td align="center"{row_style} sdval="{open_points}" sdnum="2057;">{format_cell(open_points)}</td>
 		<td align="center"{row_style} sdval="{team_data['u12']}" sdnum="2057;">{format_cell(team_data['u12'])}</td>
-		<td align="center"{row_style} sdval="{team_data['youth']}" sdnum="2057;">{format_cell(team_data['youth'])}</td>
-		<td align="center"{row_style} sdval="{team_data['v40']}" sdnum="2057;">{format_cell(team_data['v40'])}</td>
+		<td align="center"{row_style} sdval="{team_data['youth']}" sdnum="2057;">{format_cell(team_data['youth'])}</td>{v40_cell}
 		<td align="center"{row_style} sdval="{team_data['v50']}" sdnum="2057;">{format_cell(team_data['v50'])}</td>
 		<td align="center"{row_style} sdval="{team_data['total']}" sdnum="2057;"><b><font face="Liberation Serif" size=3 color="#000000">{team_data['total']}</font></b></td>
 	</tr>''')
@@ -1081,10 +1093,11 @@ def generate_teams_html(team_standings: List[Dict]) -> str:
 
 def main():
     """Main function to generate standings."""
+    year = int(sys.argv[1]) if len(sys.argv) > 1 else 2025
     # Get project root (parent of scripts directory)
     project_root = Path(__file__).parent.parent
-    results_dir = project_root / 'results' / '2025'
-    output_dir = project_root / 'templates' / 'standings' / '2025'
+    results_dir = project_root / 'results' / str(year)
+    output_dir = project_root / 'templates' / 'standings' / str(year)
     
     # Create output directory if it doesn't exist
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -1103,12 +1116,14 @@ def main():
                      for rounds in all_results.values()), default=2)
     
     # Category titles
+    # Seniors share the Masters 40 race from 2026, so that table is one classification.
+    join_open = year >= 2026
     category_titles = {
         'mens': 'Senior Open',
         'womens': 'Women',
         'youth': 'Youth U16/U14',
         'u12': 'Under 12',
-        'v40': 'Veteran 40 Open',
+        'v40': 'Senior / Masters 40' if join_open else 'Veteran 40 Open',
         'v50': 'Veteran 50 Open',
     }
     
@@ -1126,7 +1141,7 @@ def main():
     print("\nCalculating team standings...")
     team_standings = calculate_team_standings(all_results, category_standings)
     
-    teams_html = generate_teams_html(team_standings)
+    teams_html = generate_teams_html(team_standings, join_open=join_open)
     teams_file = output_dir / 'teams.html'
     teams_file.write_text(teams_html)
     print(f"Generated {teams_file}")
