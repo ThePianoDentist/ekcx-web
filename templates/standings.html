@@ -34,8 +34,8 @@
         </ul>
       </div>
       <div id="content" style="width: 100%;">
-          <div id="standings-filter" hidden style="padding: 10px 12px 0; font-family: sans-serif;">
-            <label>Category
+          <div id="standings-filter" hidden>
+            <label><b>Category</b>
               <select id="standings-category"></select>
             </label>
             <label id="standings-gender-wrap" hidden style="margin-left: 16px;">Gender
@@ -105,6 +105,17 @@
           if (genders.length > 1) {
             fill(genderSelect, genders);
             genderWrap.hidden = false;
+          }
+          var heading = document.querySelector('#content h1');
+          if (heading) {
+            var bar = document.createElement('div');
+            bar.style.display = 'flex';
+            bar.style.alignItems = 'baseline';
+            bar.style.gap = '16px';
+            bar.style.flexWrap = 'wrap';
+            heading.parentNode.insertBefore(bar, heading);
+            bar.appendChild(heading);
+            bar.appendChild(filter);
           }
           filter.hidden = false;
 
