@@ -67,7 +67,7 @@ async def event_detail(request: Request, year: int, round_num: int):
                 "date": "September 13, 2026",
                 "location": "Sandwich",
                 "british_cycling_url": "https://www.britishcycling.org.uk/events/details/338429/East-Kent-Cyclo-Cross-League-Round-1-SandwichTechCross---Tim-Mountford-Memorial-",
-                "status": "upcoming"
+                "status": "completed"
             },
             2: {
                 "name": "Round 2: Dover",

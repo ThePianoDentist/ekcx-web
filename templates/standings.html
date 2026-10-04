@@ -13,18 +13,20 @@
       {% include "nav.html" %}
         <div id="menubar_standings_year"  class="menubar">
         <ul id="menu_standings_year" class="menu">
-            <li {{ 'class=selected' if year == 2026 else '' }}><a href="/standings/2026/{{category}}">2026</a></li>
-            <li {{ 'class=selected' if year == 2025 else '' }}><a href="/standings/2025/{{category}}">2025</a></li>
-            <li {{ 'class=selected' if year == 2024 else '' }}><a href="/standings/2024/{{category}}">2024</a></li>
-            <li {{ 'class=selected' if year == 2023 else '' }}><a href="/standings/2023/{{category}}">2023</a></li>
+            <li {{ 'class=selected' if year == 2026 else '' }}><a href="/standings/2026/{{category}}">26/27</a></li>
+            <li {{ 'class=selected' if year == 2025 else '' }}><a href="/standings/2025/{{category}}">25/26</a></li>
+            <li {{ 'class=selected' if year == 2024 else '' }}><a href="/standings/2024/{{category}}">24/25</a></li>
+            <li {{ 'class=selected' if year == 2023 else '' }}><a href="/standings/2023/{{category}}">23/24</a></li>
         </ul>
       </div>
       <div id="menubar_standings"  class="menubar">
         <ul id="menu_standings" class="menu">
             <li {{ 'class=selected' if category == 'v50' else '' }}><a href="/standings/{{year}}/v50">Masters 50/60</a></li>
-            <li {{ 'class=selected' if category == 'v40' else '' }}><a href="/standings/{{year}}/v40">Masters 40/Junior</a></li>
+            <li {{ 'class=selected' if category == 'v40' else '' }}><a href="/standings/{{year}}/v40">{% if year >= 2026 %}Senior/V40/Junior{% else %}Masters 40/Junior{% endif %}</a></li>
             <li  {{ 'class=selected' if category == 'womens' else '' }}><a href="/standings/{{year}}/womens">Women</a></li>
+            {% if year < 2026 %}
             <li {{ 'class=selected' if category == 'mens' else '' }}><a href="/standings/{{year}}/mens">Senior Open</a></li>
+            {% endif %}
             <li {{ 'class=selected' if category == 'youth' else '' }}><a href="/standings/{{year}}/youth">Youth</a></li>
             <li {{ 'class=selected' if category == 'u12' else '' }}><a href="/standings/{{year}}/u12">Under 12</a></li>
             <li {{ 'class=selected' if category == 'teams' else '' }}><a href="/standings/{{year}}/teams">Teams</a></li>
@@ -32,8 +34,117 @@
         </ul>
       </div>
       <div id="content" style="width: 100%;">
+          <div id="standings-filter" hidden>
+            <label><b>Category</b>
+              <select id="standings-category"></select>
+            </label>
+            <label id="standings-gender-wrap" hidden style="margin-left: 16px;">Gender
+              <select id="standings-gender"></select>
+            </label>
+          </div>
           {% include "standings/%s/%s.html" % (year, category) %}
       </div>
+      <script>
+        (function () {
+          var table = document.querySelector('#content table');
+          var filter = document.getElementById('standings-filter');
+          if (!table || !filter) return;
+          var header = table.rows[0];
+          if (!header) return;
+
+          function text(cell) {
+            return (cell.innerText || '').replace(/[🥇🥈🥉]/g, '').replace(/\s+/g, ' ').trim();
+          }
+
+          var headers = Array.prototype.map.call(header.cells, text);
+          var categoryIndex = headers.indexOf('Category');
+          if (categoryIndex < 0) return;
+          var genderIndex = headers.indexOf('Gender');
+
+          var rows = Array.prototype.slice.call(table.rows, 1);
+          rows.forEach(function (row) {
+            Array.prototype.forEach.call(row.cells, function (cell) {
+              cell.dataset.origBg = cell.style.background || '';
+            });
+          });
+
+          function values(index) {
+            var seen = {};
+            var list = [];
+            rows.forEach(function (row) {
+              var cell = row.cells[index];
+              if (!cell) return;
+              var value = text(cell);
+              if (!value || seen[value]) return;
+              seen[value] = true;
+              list.push(value);
+            });
+            list.sort();
+            return list;
+          }
+
+          function fill(select, items) {
+            select.innerHTML = '';
+            var all = document.createElement('option');
+            all.value = '';
+            all.textContent = 'All';
+            select.appendChild(all);
+            items.forEach(function (item) {
+              var option = document.createElement('option');
+              option.value = item;
+              option.textContent = item;
+              select.appendChild(option);
+            });
+          }
+
+          var categorySelect = document.getElementById('standings-category');
+          var genderWrap = document.getElementById('standings-gender-wrap');
+          var genderSelect = document.getElementById('standings-gender');
+          fill(categorySelect, values(categoryIndex));
+          var genders = genderIndex >= 0 ? values(genderIndex) : [];
+          if (genders.length > 1) {
+            fill(genderSelect, genders);
+            genderWrap.hidden = false;
+          }
+          var heading = document.querySelector('#content h1');
+          if (heading) {
+            var bar = document.createElement('div');
+            bar.style.display = 'flex';
+            bar.style.alignItems = 'baseline';
+            bar.style.gap = '16px';
+            bar.style.flexWrap = 'wrap';
+            heading.parentNode.insertBefore(bar, heading);
+            bar.appendChild(heading);
+            bar.appendChild(filter);
+          }
+          filter.hidden = false;
+
+          function apply() {
+            var category = categorySelect.value;
+            var gender = genders.length > 1 ? genderSelect.value : '';
+            var shown = 0;
+            rows.forEach(function (row) {
+              var categoryCell = row.cells[categoryIndex];
+              var rowCategory = categoryCell ? text(categoryCell) : '';
+              var rowGender = '';
+              if (genderIndex >= 0 && row.cells[genderIndex]) {
+                rowGender = text(row.cells[genderIndex]);
+              }
+              var match = (!category || rowCategory === category) && (!gender || rowGender === gender);
+              row.style.display = match ? '' : 'none';
+              if (!match) return;
+              shown += 1;
+              var bg = shown % 2 === 0 ? '#CCCCCC' : '';
+              Array.prototype.forEach.call(row.cells, function (cell) {
+                cell.style.background = (category || gender) ? bg : cell.dataset.origBg;
+              });
+            });
+          }
+
+          categorySelect.addEventListener('change', apply);
+          genderSelect.addEventListener('change', apply);
+        })();
+      </script>
     </div>
     {% include "footer.html" %}
   </div>

@@ -53,6 +53,8 @@ def _clean_results_df(df: pd.DataFrame, preferred_cols: list) -> pd.DataFrame:
 
 def _map_filename_to_title(stem: str) -> str:
     name = stem.lower()
+    if 'try cx' in name or 'trycx' in name:
+        return 'Try CX'
     if 'elite female' in name or 'elite women' in name:
         return 'Women'
     if 'elite open' in name or 'senior open' in name or 'senior' in name:
@@ -61,10 +63,10 @@ def _map_filename_to_title(stem: str) -> str:
         return 'Under 12'
     if 'under 16' in name or 'u16' in name:
         return 'Youth U16/U14'
-    if 'v40' in name or 'm40' in name:
-        return 'Veteran 40 Open'
-    if 'v50' in name or 'm50' in name:
+    if 'masters 50' in name or 'masters50' in name or 'v50' in name or 'm50' in name:
         return 'Veteran 50 Open'
+    if 'masters 40' in name or 'masters40' in name or 'v40' in name or 'm40' in name:
+        return 'Veteran 40 Open'
     return stem
 
 
@@ -115,9 +117,18 @@ def build_results_sections(year: int, round_num: int) -> List[Dict[str, Any]]:
         if df.empty:
             continue
 
-        # Fix positions to be sequential (1, 2, 3...) based on row order
-        # Files are always ordered, so positions should go 1,2,3,4,5,6,7,8 etc.
+        # DNS/DNF rows are not finishers. Renumber the remaining rows so a
+        # gap from a lapped rider does not shift the places underneath.
         if 'Position' in df.columns:
+            def _placed(value) -> bool:
+                text = str(value).strip()
+                if text.endswith('.0'):
+                    text = text[:-2]
+                return text.isdigit()
+
+            df = df[df['Position'].apply(_placed)].copy()
+            if df.empty:
+                continue
             df['Position'] = range(1, len(df) + 1)
 
         table_html = df.to_html(index=False, border=0, classes='event-results-table', na_rep='')

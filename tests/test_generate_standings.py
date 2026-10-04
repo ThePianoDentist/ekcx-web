@@ -236,7 +236,16 @@ class TestDetermineCategoryFromFilename:
         assert determine_category_from_filename("V50 Open-r6-.xlsx") == "v50"
         assert determine_category_from_filename("M50 Open-r6-.xlsx") == "v50"
         assert determine_category_from_filename("EKCX 2025 V50 Open-r6-.xlsx") == "v50"
-    
+        assert determine_category_from_filename("EKCX 2026 Sandwich R1 Masters 50-r6-.xlsx") == "v50"
+
+    def test_masters_40(self):
+        """2026 exports use Masters 40 rather than V40."""
+        assert determine_category_from_filename("EKCX 2026 Sandwich R1 Masters 40-r4-.xlsx") == "v40"
+
+    def test_try_cx_does_not_score(self):
+        """Try CX is a participation race and is left out of the standings."""
+        assert determine_category_from_filename("EKCX 2026 Sandwich R1 Try CX-r2-.xlsx") == "skip"
+
     def test_unknown_category(self):
         """Test that unknown categories return 'unknown'."""
         assert determine_category_from_filename("Unknown Category.xlsx") == "unknown"
@@ -436,6 +445,22 @@ class TestNormalizeRiderAndTeamNames:
         assert all_results['mens']['1'][0]['team'] == 'Limited Edition Cycling'
         assert 'LEC' in team_norms
         assert team_norms['LEC'] == 'Limited Edition Cycling'
+
+    def test_vcl_is_vc_londres(self):
+        """VCL is the short name for VC Londres."""
+        all_results = {
+            'youth': {
+                '1': [
+                    {'last_name': 'HAINES', 'first_name': 'George', 'team': 'VCL', 'position': 2, 'points': 94},
+                    {'last_name': 'SMITH', 'first_name': 'John', 'team': 'VC Londres', 'position': 8, 'points': 76},
+                ]
+            }
+        }
+        rider_norms, team_norms = normalize_rider_and_team_names(all_results)
+
+        assert all_results['youth']['1'][0]['team'] == 'VC Londres'
+        assert all_results['youth']['1'][1]['team'] == 'VC Londres'
+        assert team_norms['VCL'] == 'VC Londres'
     
     def test_frequency_based_target_selection(self):
         """Test that more frequent names are chosen as targets."""
