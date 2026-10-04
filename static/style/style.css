@@ -296,6 +296,33 @@ ul.menu li a:hover, ul.menu li.selected a, ul.menu li.selected a:hover
   padding: 0 0 4px 0;
   line-height: 1.5em;}
 
+#content ul ul
+{ margin: 2px 0 8px 0;}
+
+.home-intro
+{ display: flex;
+  gap: 20px;
+  align-items: flex-start;}
+
+.home-copy
+{ flex: 1;
+  min-width: 0;}
+
+.home-photos
+{ flex: 0 0 400px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  align-items: flex-end;}
+
+.home-photos img
+{ width: auto;
+  max-width: 100%;
+  max-height: 280px;
+  height: auto;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);}
+
 #footer
 { width: 100%;
   max-width: 940px;
@@ -444,11 +471,16 @@ table tr td
   { height: 1.2em; }
   #logo_text h1, #logo_text h1 a, #logo_text h1 a:hover
   { font: 700 200% 'Inter', 'century gothic', arial, sans-serif; line-height: 1.1; margin-bottom: 6px; padding-top: 6px; }
-  #content img[alt="Sandwich Cyclocross"]
-  { max-width: 280px !important;
-    max-height: 200px !important;}
-  #content div[style*="padding-right"]
-  { padding-right: 300px !important;}}
+  .home-intro
+  { flex-direction: column;}
+  .home-photos
+  { flex: none;
+    width: 100%;
+    flex-direction: row;
+    flex-wrap: wrap;}
+  .home-photos img
+  { max-width: 280px;
+    max-height: 200px;}}
 
 @media (max-width: 480px)
 { body
@@ -457,10 +489,9 @@ table tr td
   { font-size: 150%;}
   ul.menu li a
   { padding: 8px 12px;}
-  #content img[alt="Sandwich Cyclocross"]
-  { max-width: 200px !important;
-    max-height: 150px !important;}
-  #content.card[style*="padding-bottom"]
-  { padding-bottom: 180px !important;}
-  #content div[style*="padding-right"]
-  { padding-right: 20px !important;}}
+  .home-photos
+  { flex-direction: column;
+    align-items: stretch;}
+  .home-photos img
+  { max-width: 100%;
+    max-height: 180px;}}
