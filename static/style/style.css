@@ -312,8 +312,14 @@ ul.menu li a:hover, ul.menu li.selected a, ul.menu li.selected a:hover
 { flex: 0 0 400px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  align-items: flex-end;}
+  align-items: flex-end;
+  align-self: stretch;
+  position: relative;}
+
+.home-photos img:last-child
+{ position: absolute;
+  top: 50%;
+  right: 0;}
 
 .home-photos img
 { width: auto;
@@ -480,7 +486,9 @@ table tr td
     flex-wrap: wrap;}
   .home-photos img
   { max-width: 280px;
-    max-height: 200px;}}
+    max-height: 200px;}
+  .home-photos img:last-child
+  { position: static;}}
 
 @media (max-width: 480px)
 { body
