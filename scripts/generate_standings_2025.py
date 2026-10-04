@@ -472,6 +472,9 @@ def normalize_rider_and_team_names(all_results: Dict[str, Dict[str, List[Dict]]]
         'LEC': 'Limited Edition Cycling',
         'lec': 'Limited Edition Cycling',
         'Lec': 'Limited Edition Cycling',
+        'VCL': 'VC Londres',
+        'Vcl': 'VC Londres',
+        'vcl': 'VC Londres',
     }
     
     # Collect all unique riders and teams, and count occurrences
@@ -1038,7 +1041,7 @@ def generate_teams_html(team_standings: List[Dict], join_open: bool = False) -> 
     else:
         team_width = max(200, min(max_length * 8, 400))
     
-    open_header = 'Senior/M40' if join_open else 'Senior Open'
+    open_header = 'V40' if join_open else 'Senior Open'
     v40_header = '' if join_open else '\n\t\t<td align="center" style="background: #000000; color: white" sdnum="2057;0;@"><b><font face="Liberation Serif" size=3>V40</font></b></td>'
     age_cols = '<colgroup width="45"></colgroup>' if join_open else '<colgroup span="2" width="45"></colgroup>'
     header = f'''<div><h2>Teams</h2></div>
@@ -1123,7 +1126,7 @@ def main():
         'womens': 'Women',
         'youth': 'Youth U16/U14',
         'u12': 'Under 12',
-        'v40': 'Senior / Masters 40' if join_open else 'Veteran 40 Open',
+        'v40': 'Veteran 40 Open',
         'v50': 'Veteran 50 Open',
     }
     

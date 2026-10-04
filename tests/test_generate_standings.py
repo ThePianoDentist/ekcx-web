@@ -445,6 +445,22 @@ class TestNormalizeRiderAndTeamNames:
         assert all_results['mens']['1'][0]['team'] == 'Limited Edition Cycling'
         assert 'LEC' in team_norms
         assert team_norms['LEC'] == 'Limited Edition Cycling'
+
+    def test_vcl_is_vc_londres(self):
+        """VCL is the short name for VC Londres."""
+        all_results = {
+            'youth': {
+                '1': [
+                    {'last_name': 'HAINES', 'first_name': 'George', 'team': 'VCL', 'position': 2, 'points': 94},
+                    {'last_name': 'SMITH', 'first_name': 'John', 'team': 'VC Londres', 'position': 8, 'points': 76},
+                ]
+            }
+        }
+        rider_norms, team_norms = normalize_rider_and_team_names(all_results)
+
+        assert all_results['youth']['1'][0]['team'] == 'VC Londres'
+        assert all_results['youth']['1'][1]['team'] == 'VC Londres'
+        assert team_norms['VCL'] == 'VC Londres'
     
     def test_frequency_based_target_selection(self):
         """Test that more frequent names are chosen as targets."""

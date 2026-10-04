@@ -65,10 +65,7 @@ def _map_filename_to_title(stem: str) -> str:
         return 'Youth U16/U14'
     if 'masters 50' in name or 'masters50' in name or 'v50' in name or 'm50' in name:
         return 'Veteran 50 Open'
-    # 2026 onwards: seniors, masters 40 and juniors share this race.
-    if 'masters 40' in name or 'masters40' in name:
-        return 'Senior / Masters 40'
-    if 'v40' in name or 'm40' in name:
+    if 'masters 40' in name or 'masters40' in name or 'v40' in name or 'm40' in name:
         return 'Veteran 40 Open'
     return stem
 

@@ -22,7 +22,7 @@
       <div id="menubar_standings"  class="menubar">
         <ul id="menu_standings" class="menu">
             <li {{ 'class=selected' if category == 'v50' else '' }}><a href="/standings/{{year}}/v50">Masters 50/60</a></li>
-            <li {{ 'class=selected' if category == 'v40' else '' }}><a href="/standings/{{year}}/v40">{% if year >= 2026 %}Senior/Masters 40{% else %}Masters 40/Junior{% endif %}</a></li>
+            <li {{ 'class=selected' if category == 'v40' else '' }}><a href="/standings/{{year}}/v40">{% if year >= 2026 %}Senior/V40/Junior{% else %}Masters 40/Junior{% endif %}</a></li>
             <li  {{ 'class=selected' if category == 'womens' else '' }}><a href="/standings/{{year}}/womens">Women</a></li>
             {% if year < 2026 %}
             <li {{ 'class=selected' if category == 'mens' else '' }}><a href="/standings/{{year}}/mens">Senior Open</a></li>
@@ -34,8 +34,106 @@
         </ul>
       </div>
       <div id="content" style="width: 100%;">
+          <div id="standings-filter" hidden style="padding: 10px 12px 0; font-family: sans-serif;">
+            <label>Category
+              <select id="standings-category"></select>
+            </label>
+            <label id="standings-gender-wrap" hidden style="margin-left: 16px;">Gender
+              <select id="standings-gender"></select>
+            </label>
+          </div>
           {% include "standings/%s/%s.html" % (year, category) %}
       </div>
+      <script>
+        (function () {
+          var table = document.querySelector('#content table');
+          var filter = document.getElementById('standings-filter');
+          if (!table || !filter) return;
+          var header = table.rows[0];
+          if (!header) return;
+
+          function text(cell) {
+            return (cell.innerText || '').replace(/[🥇🥈🥉]/g, '').replace(/\s+/g, ' ').trim();
+          }
+
+          var headers = Array.prototype.map.call(header.cells, text);
+          var categoryIndex = headers.indexOf('Category');
+          if (categoryIndex < 0) return;
+          var genderIndex = headers.indexOf('Gender');
+
+          var rows = Array.prototype.slice.call(table.rows, 1);
+          rows.forEach(function (row) {
+            Array.prototype.forEach.call(row.cells, function (cell) {
+              cell.dataset.origBg = cell.style.background || '';
+            });
+          });
+
+          function values(index) {
+            var seen = {};
+            var list = [];
+            rows.forEach(function (row) {
+              var cell = row.cells[index];
+              if (!cell) return;
+              var value = text(cell);
+              if (!value || seen[value]) return;
+              seen[value] = true;
+              list.push(value);
+            });
+            list.sort();
+            return list;
+          }
+
+          function fill(select, items) {
+            select.innerHTML = '';
+            var all = document.createElement('option');
+            all.value = '';
+            all.textContent = 'All';
+            select.appendChild(all);
+            items.forEach(function (item) {
+              var option = document.createElement('option');
+              option.value = item;
+              option.textContent = item;
+              select.appendChild(option);
+            });
+          }
+
+          var categorySelect = document.getElementById('standings-category');
+          var genderWrap = document.getElementById('standings-gender-wrap');
+          var genderSelect = document.getElementById('standings-gender');
+          fill(categorySelect, values(categoryIndex));
+          var genders = genderIndex >= 0 ? values(genderIndex) : [];
+          if (genders.length > 1) {
+            fill(genderSelect, genders);
+            genderWrap.hidden = false;
+          }
+          filter.hidden = false;
+
+          function apply() {
+            var category = categorySelect.value;
+            var gender = genders.length > 1 ? genderSelect.value : '';
+            var shown = 0;
+            rows.forEach(function (row) {
+              var categoryCell = row.cells[categoryIndex];
+              var rowCategory = categoryCell ? text(categoryCell) : '';
+              var rowGender = '';
+              if (genderIndex >= 0 && row.cells[genderIndex]) {
+                rowGender = text(row.cells[genderIndex]);
+              }
+              var match = (!category || rowCategory === category) && (!gender || rowGender === gender);
+              row.style.display = match ? '' : 'none';
+              if (!match) return;
+              shown += 1;
+              var bg = shown % 2 === 0 ? '#CCCCCC' : '';
+              Array.prototype.forEach.call(row.cells, function (cell) {
+                cell.style.background = (category || gender) ? bg : cell.dataset.origBg;
+              });
+            });
+          }
+
+          categorySelect.addEventListener('change', apply);
+          genderSelect.addEventListener('change', apply);
+        })();
+      </script>
     </div>
     {% include "footer.html" %}
   </div>
