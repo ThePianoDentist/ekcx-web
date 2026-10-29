@@ -179,7 +179,7 @@ def determine_category_from_filename(filename: str) -> str:
         return 'skip'
 
     # Map filenames to categories (ignoring race numbers in the filename — round is the directory).
-    if 'elite female' in filename_lower or 'elite women' in filename_lower:
+    if 'elite female' in filename_lower or 'elite women' in filename_lower or 'womens' in filename_lower:
         return 'womens'
     elif 'elite open' in filename_lower or 'senior open' in filename_lower or 'senior' in filename_lower:
         return 'mens'
@@ -475,6 +475,16 @@ def normalize_rider_and_team_names(all_results: Dict[str, Dict[str, List[Dict]]]
         'VCL': 'VC Londres',
         'Vcl': 'VC Londres',
         'vcl': 'VC Londres',
+        # Abbreviations used in the Duke of York export; full names are in other rounds.
+        'SDW': 'Southborough & District Whls',
+        'Sdw': 'Southborough & District Whls',
+        'sdw': 'Southborough & District Whls',
+        'Morden CC': 'Morden Cycle Racing Club',
+        'SFA': 'San Fairy Ann CC',
+        'Sfa': 'San Fairy Ann CC',
+        'sfa': 'San Fairy Ann CC',
+        'Bigfoot Youth Cycle Club Ltd': 'Bigfoot CC',
+        'Kingston': 'Kingston Wheelers CC',
     }
     
     # Collect all unique riders and teams, and count occurrences
@@ -517,11 +527,23 @@ def normalize_rider_and_team_names(all_results: Dict[str, Dict[str, List[Dict]]]
     # Handle predefined normalizations with case-insensitive matching
     normalized_target = ('MERRINGTON', 'Hannah')
     danielle_target = ('PETERSMANN', 'Danielle')
-    
+    # Same licence across rounds; the short form is too far for similarity matching.
+    predefined_rider_normalizations = {
+        ('BRADFORD', 'OLLIE'): ('BRADFORD', 'Oliver'),
+        ('MALPASS', 'JO'): ('MALPASS', 'Joanne'),
+        ('SPURRIER', 'BEN'): ('SPURRIER', 'Benedict'),
+    }
+
     for rider in all_riders:
         rider_last_upper = rider[0].upper()
         rider_first_title = rider[1].title()
-        
+        rider_key = (rider_last_upper, rider[1].upper())
+        if rider_key in predefined_rider_normalizations:
+            target = predefined_rider_normalizations[rider_key]
+            if rider != target:
+                rider_normalizations[rider] = target
+                print(f"Rider normalized (predefined): {rider} -> {target}")
+
         # Hannah Merrington/Nicholson normalization
         # Normalize both Nicholson and any variant of Merrington (with 1 or 2 R's) to MERRINGTON
         if rider_first_title == 'Hannah' and (rider_last_upper == 'NICHOLSON' or 

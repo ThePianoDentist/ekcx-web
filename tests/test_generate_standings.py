@@ -206,6 +206,7 @@ class TestDetermineCategoryFromFilename:
         assert determine_category_from_filename("Elite Female-r4-.xlsx") == "womens"
         assert determine_category_from_filename("Elite Women-r4-.xlsx") == "womens"
         assert determine_category_from_filename("EKCX 2025 Elite Female-r4-.xlsx") == "womens"
+        assert determine_category_from_filename("EKCX 2026 Duke of York R2 Womens-r5-.xlsx") == "womens"
     
     def test_elite_open(self):
         """Test detection of elite open category."""
@@ -461,7 +462,78 @@ class TestNormalizeRiderAndTeamNames:
         assert all_results['youth']['1'][0]['team'] == 'VC Londres'
         assert all_results['youth']['1'][1]['team'] == 'VC Londres'
         assert team_norms['VCL'] == 'VC Londres'
-    
+
+    def test_licence_backed_rider_nicknames(self):
+        """Ollie/Jo/Ben are the same riders as the longer forms on a shared licence."""
+        # Setup:
+        all_results = {
+            'youth': {
+                '1': [{'last_name': 'BRADFORD', 'first_name': 'Ollie', 'team': '4T+ Cyclopark', 'position': 4, 'points': 86}],
+                '2': [{'last_name': 'BRADFORD', 'first_name': 'Oliver', 'team': '4T+ Cyclopark', 'position': 1, 'points': 100}],
+            },
+            'womens': {
+                '1': [{'last_name': 'MALPASS', 'first_name': 'Joanne', 'team': 'VC Deal', 'position': 4, 'points': 86}],
+                '2': [{'last_name': 'MALPASS', 'first_name': 'Jo', 'team': 'VC Deal', 'position': 3, 'points': 90}],
+            },
+            'v40': {
+                '1': [{'last_name': 'SPURRIER', 'first_name': 'Benedict', 'team': 'ViCiOUS VELO', 'position': 30, 'points': 51}],
+                '2': [{'last_name': 'SPURRIER', 'first_name': 'Ben', 'team': 'ViCiOUS VELO', 'position': 36, 'points': 45}],
+            },
+        }
+        # Run:
+        normalize_rider_and_team_names(all_results)
+        # Check:
+        assert all_results['youth']['1'][0]['first_name'] == 'Oliver'
+        assert all_results['youth']['2'][0]['first_name'] == 'Oliver'
+        assert all_results['womens']['1'][0]['first_name'] == 'Joanne'
+        assert all_results['womens']['2'][0]['first_name'] == 'Joanne'
+        assert all_results['v40']['1'][0]['first_name'] == 'Benedict'
+        assert all_results['v40']['2'][0]['first_name'] == 'Benedict'
+
+    def test_2026_team_abbreviations(self):
+        """Short club names from the round 2 export map onto the full names."""
+        # Setup:
+        all_results = {
+            'u12': {
+                '2': [{'last_name': 'FORMBY', 'first_name': 'Osian', 'team': 'SDW', 'position': 1, 'points': 100}],
+            },
+            'v50': {
+                '2': [{'last_name': 'RIMMER', 'first_name': 'Duncan', 'team': 'Morden CC', 'position': 1, 'points': 100}],
+            },
+            'v40': {
+                '2': [{'last_name': 'POPE', 'first_name': 'Steven', 'team': 'SFA', 'position': 1, 'points': 100}],
+            },
+        }
+        # Run:
+        normalize_rider_and_team_names(all_results)
+        # Check:
+        assert all_results['u12']['2'][0]['team'] == 'Southborough & District Whls'
+        assert all_results['v50']['2'][0]['team'] == 'Morden Cycle Racing Club'
+        assert all_results['v40']['2'][0]['team'] == 'San Fairy Ann CC'
+
+    def test_bigfoot_youth_and_kingston_are_one_club(self):
+        """Bigfoot Youth and Kingston are Bigfoot CC and Kingston Wheelers CC."""
+        # Setup:
+        all_results = {
+            'youth': {
+                '1': [{'last_name': 'PLAIL', 'first_name': 'Dylan', 'team': 'Bigfoot Youth Cycle Club Ltd', 'position': 1, 'points': 100}],
+            },
+            'v40': {
+                '1': [{'last_name': 'WATKINS', 'first_name': 'Thomas', 'team': 'Bigfoot CC', 'position': 2, 'points': 94}],
+                '2': [{'last_name': 'EGAN', 'first_name': 'Declan', 'team': 'Kingston', 'position': 3, 'points': 90}],
+            },
+            'v50': {
+                '1': [{'last_name': 'MONTAGU', 'first_name': 'Chris', 'team': 'Kingston Wheelers CC', 'position': 4, 'points': 86}],
+            },
+        }
+        # Run:
+        normalize_rider_and_team_names(all_results)
+        # Check:
+        assert all_results['youth']['1'][0]['team'] == 'Bigfoot CC'
+        assert all_results['v40']['1'][0]['team'] == 'Bigfoot CC'
+        assert all_results['v40']['2'][0]['team'] == 'Kingston Wheelers CC'
+        assert all_results['v50']['1'][0]['team'] == 'Kingston Wheelers CC'
+
     def test_frequency_based_target_selection(self):
         """Test that more frequent names are chosen as targets."""
         all_results = {
