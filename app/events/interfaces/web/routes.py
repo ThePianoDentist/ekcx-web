@@ -77,21 +77,24 @@ async def event_detail(request: Request, year: int, round_num: int):
                 "status": "upcoming"
             },
             3: {
-                "name": "Round 3: TBC",
+                "name": "Round 3: Farthingloe",
                 "date": "November 15, 2026",
-                "location": "TBC",
+                "location": "Farthingloe",
+                "british_cycling_url": "https://www.britishcycling.org.uk/events/details/341793/East-Kent-Cyclo-Cross-League-Round-3-FarthingloeCross",
                 "status": "upcoming"
             },
             4: {
                 "name": "Round 4: Lydden",
                 "date": "December 13, 2026",
                 "location": "Lydden",
+                "british_cycling_url": "https://www.britishcycling.org.uk/events/details/341794/East-Kent-Cyclo-Cross-League-Round-4-LyddenHillCross",
                 "status": "upcoming"
             },
             5: {
                 "name": "Round 5: Betteshanger",
                 "date": "January 17, 2027",
                 "location": "Betteshanger",
+                "british_cycling_url": "https://www.britishcycling.org.uk/events/details/341795/East-Kent-Cyclo-Cross-League-Round-5-BetteshangerCross",
                 "status": "upcoming"
             }
         }
