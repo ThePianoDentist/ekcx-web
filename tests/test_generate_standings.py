@@ -207,6 +207,7 @@ class TestDetermineCategoryFromFilename:
         assert determine_category_from_filename("Elite Women-r4-.xlsx") == "womens"
         assert determine_category_from_filename("EKCX 2025 Elite Female-r4-.xlsx") == "womens"
         assert determine_category_from_filename("EKCX 2026 Duke of York R2 Womens-r5-.xlsx") == "womens"
+        assert determine_category_from_filename("EKCX 2026 Farthingloe R3 Women-r5-.xlsx") == "womens"
     
     def test_elite_open(self):
         """Test detection of elite open category."""
@@ -242,6 +243,18 @@ class TestDetermineCategoryFromFilename:
     def test_masters_40(self):
         """2026 exports use Masters 40 rather than V40."""
         assert determine_category_from_filename("EKCX 2026 Sandwich R1 Masters 40-r4-.xlsx") == "v40"
+
+    def test_combined_farthingloe_races(self):
+        """Round 3 exports several age groups in one file; they still score on one table."""
+        assert determine_category_from_filename(
+            "EKCX 2026 Farthingloe R3 Junior, Senior, M40-49 Open.xlsx"
+        ) == "v40"
+        assert determine_category_from_filename(
+            "EKCX 2026 Farthingloe R3 M50, M60, M70 Open.xlsx"
+        ) == "v50"
+        assert determine_category_from_filename(
+            "EKCX 2026 Farthingloe R3 Under 16, Under 14.xlsx"
+        ) == "youth"
 
     def test_try_cx_does_not_score(self):
         """Try CX is a participation race and is left out of the standings."""
@@ -490,6 +503,26 @@ class TestNormalizeRiderAndTeamNames:
         assert all_results['v40']['1'][0]['first_name'] == 'Benedict'
         assert all_results['v40']['2'][0]['first_name'] == 'Benedict'
 
+    def test_round_3_name_spellings(self):
+        """Farthingloe typos stay on the rider who already has a licence."""
+        # Setup:
+        all_results = {
+            'v50': {
+                '1': [{'last_name': 'BURT', 'first_name': 'Randolph', 'team': 'VC Deal', 'position': 29, 'points': 52}],
+                '3': [{'last_name': 'BURT', 'first_name': 'Randolpoh', 'team': 'VC Deal', 'position': 28, 'points': 53}],
+            },
+            'womens': {
+                '2': [{'last_name': 'CALEIA-RAMOS', 'first_name': 'Natasha', 'team': 'ASSOS UK Racing Team', 'position': 6, 'points': 80}],
+                '3': [{'last_name': 'CALDAR-RAMOS', 'first_name': 'Natasha', 'team': 'ASSOS Race Team', 'position': 5, 'points': 83}],
+            },
+        }
+        # Run:
+        normalize_rider_and_team_names(all_results)
+        # Check:
+        assert all_results['v50']['3'][0]['first_name'] == 'Randolph'
+        assert all_results['womens']['2'][0]['last_name'] == 'CALDAR-RAMOS'
+        assert all_results['womens']['3'][0]['last_name'] == 'CALDAR-RAMOS'
+
     def test_2026_team_abbreviations(self):
         """Short club names from the round 2 export map onto the full names."""
         # Setup:
@@ -510,6 +543,19 @@ class TestNormalizeRiderAndTeamNames:
         assert all_results['u12']['2'][0]['team'] == 'Southborough & District Whls'
         assert all_results['v50']['2'][0]['team'] == 'Morden Cycle Racing Club'
         assert all_results['v40']['2'][0]['team'] == 'San Fairy Ann CC'
+
+    def test_southborough_short_name(self):
+        """Round 3 wrote Southborough for Southborough & District Whls."""
+        # Setup:
+        all_results = {
+            'womens': {
+                '3': [{'last_name': 'HUGHES', 'first_name': 'Nicky', 'team': 'Southborough', 'position': 2, 'points': 94}],
+            }
+        }
+        # Run:
+        normalize_rider_and_team_names(all_results)
+        # Check:
+        assert all_results['womens']['3'][0]['team'] == 'Southborough & District Whls'
 
     def test_bigfoot_youth_and_kingston_are_one_club(self):
         """Bigfoot Youth and Kingston are Bigfoot CC and Kingston Wheelers CC."""
