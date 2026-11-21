@@ -118,21 +118,6 @@ def build_results_sections(year: int, round_num: int) -> List[Dict[str, Any]]:
         if df.empty:
             continue
 
-        # A placed row with no name is a blank chip, not a finisher.
-        if 'Last Name' in df.columns:
-            def _named(row) -> bool:
-                for col in ('Last Name', 'First Name'):
-                    if col not in row.index:
-                        continue
-                    text = str(row[col]).strip()
-                    if text and text.lower() not in ('nan', 'none'):
-                        return True
-                return False
-
-            df = df[df.apply(_named, axis=1)]
-            if df.empty:
-                continue
-
         # DNS/DNF rows are not finishers. Renumber the remaining rows so a
         # gap from a lapped rider does not shift the places underneath.
         if 'Position' in df.columns:

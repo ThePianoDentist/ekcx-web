@@ -20,6 +20,7 @@ from generate_standings_2025 import (
     choose_rider_target,
     choose_team_target,
     normalize_rider_and_team_names,
+    read_race_result,
 )
 
 
@@ -264,6 +265,32 @@ class TestDetermineCategoryFromFilename:
         """Test that unknown categories return 'unknown'."""
         assert determine_category_from_filename("Unknown Category.xlsx") == "unknown"
         assert determine_category_from_filename("random.xlsx") == "unknown"
+
+
+class TestBlankChipRows:
+    """A placed row with no name is shown on the event page but does not score."""
+
+    def test_blank_eighth_does_not_promote_seventh_to_eighth_points(self, tmp_path):
+        # Setup:
+        from openpyxl import Workbook
+
+        wb = Workbook()
+        ws = wb.active
+        for _ in range(4):
+            ws.append(["meta"] * 3)
+        ws.append(["Pos", "Bib", "Last Name", "First Name", "Team", "Category", "Gender"])
+        ws.append([7, 1, "WALDEN-SMITH", "Hannah", "SFA", "Senior", "Women"])
+        ws.append([8, 2, None, None, None, None, None])
+        path = tmp_path / "chip.xlsx"
+        wb.save(path)
+
+        # Run:
+        df = read_race_result(path)
+
+        # Check:
+        assert len(df) == 1
+        assert int(df.iloc[0]["Pos"]) == 7
+        assert calculate_points(int(df.iloc[0]["Pos"])) == 78
 
 
 class TestIntegration:
