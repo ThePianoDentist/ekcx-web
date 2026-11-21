@@ -63,3 +63,17 @@ uv run uvicorn main:app --reload
 ```
 
 The server will be available at http://localhost:8000
+
+## Database
+
+SQLite schema is managed with Alembic. The default file is `var/ekcx.sqlite3` (override with `EKCX_DB_PATH`). The public site still reads CSV/JSON until ingest is wired up.
+
+```bash
+make db-upgrade
+```
+
+Or:
+
+```bash
+uv run alembic upgrade head
+```

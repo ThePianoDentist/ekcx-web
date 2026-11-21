@@ -19,7 +19,8 @@ app/
   results/{data,domain,interfaces/{web,admin,scripts}}
   standings/{data,domain,interfaces/{web,admin,scripts}}
   events/{data,domain,interfaces/{web,admin,scripts}}
-  riders/{data,domain,interfaces/{web,admin}}   # when needed
+  participants/{data,domain,interfaces/{web,admin}}
+  users/{data,domain,interfaces/admin}
 ```
 
 Raw exports stay at repo-root paths (e.g. `results/2025/1/*.csv`). Not inside `app/`.
@@ -33,11 +34,11 @@ Admin is near-term: upload results, edit events, declare rider merges. Colocatin
 - `results` — clean CrossMgr files, build tables; admin upload; script ingest
 - `standings` — points rules; public standings page; regen script
 - `events` — round metadata; admin CRUD; public event pages
-- `riders` — “A and B are the same person”; admin suggestions/confirmations
+- `participants` — clubs, name normalisations; admin suggestions/confirmations
 
 ## Current vs target
 
-Today: `app/domain/results.py` + JSON under domain; routes in slice `interfaces/web` modules; `main.py` wires routers only; scripts at repo root. Target: move domain/data into `app/results/...` (and sibling slices) as we touch each area.
+Today: public pages still read CSV/JSON/HTML. SQLite models live under each slice’s `data/`; Alembic manages schema. Target: move domain/data into slice packages as we touch each area.
 
 ## SQLite
 
