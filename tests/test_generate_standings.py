@@ -523,6 +523,21 @@ class TestNormalizeRiderAndTeamNames:
         assert all_results['womens']['2'][0]['last_name'] == 'CALDAR-RAMOS'
         assert all_results['womens']['3'][0]['last_name'] == 'CALDAR-RAMOS'
 
+    def test_adam_de_wilde_spellings(self):
+        """Adam's surname is spelled three ways across the 2026 rounds."""
+        # Setup:
+        all_results = {
+            'v40': {
+                '2': [{'last_name': 'DEWILDE-GREY', 'first_name': 'Adam', 'team': '', 'position': 38, 'points': 43}],
+                '3': [{'last_name': 'DE WILDE', 'first_name': 'Adam', 'team': 'FCC', 'position': 32, 'points': 49}],
+            }
+        }
+        # Run:
+        normalize_rider_and_team_names(all_results)
+        # Check:
+        assert all_results['v40']['2'][0]['last_name'] == 'DE WILDE-GREY'
+        assert all_results['v40']['3'][0]['last_name'] == 'DE WILDE-GREY'
+
     def test_2026_team_abbreviations(self):
         """Short club names from the round 2 export map onto the full names."""
         # Setup:

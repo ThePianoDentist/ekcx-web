@@ -552,6 +552,10 @@ def normalize_rider_and_team_names(all_results: Dict[str, Dict[str, List[Dict]]]
         ('BURT', 'RANDOLPOH'): ('BURT', 'Randolph'),
         # Round 2 spelled the surname differently; the licence is on Caldar-Ramos.
         ('CALEIA-RAMOS', 'NATASHA'): ('CALDAR-RAMOS', 'Natasha'),
+        # Same senior across the season: Try CX used GRAY, round 2 dropped the space, round 3 dropped GREY.
+        ('DE WILDE', 'ADAM'): ('DE WILDE-GREY', 'Adam'),
+        ('DEWILDE-GREY', 'ADAM'): ('DE WILDE-GREY', 'Adam'),
+        ('DE WILDE-GRAY', 'ADAM'): ('DE WILDE-GREY', 'Adam'),
     }
 
     for rider in all_riders:
@@ -686,6 +690,9 @@ def calculate_standings(all_results: Dict[str, Dict[str, List[Dict]]]) -> Dict[s
                         'category': result['category'],
                         'gender': result.get('gender', ''),
                     }
+                elif not rider_results[rider_key]['team'] and result['team']:
+                    # An earlier round sometimes leaves the club blank.
+                    rider_results[rider_key]['team'] = result['team']
                 
                 rider_results[rider_key]['points'].append((round_num, result['points']))
         
