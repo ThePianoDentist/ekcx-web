@@ -160,13 +160,16 @@ def read_race_result(file_path: Path) -> pd.DataFrame:
             text = str(value).strip()
             return bool(text) and text.lower() != 'nan'
 
-        df = df[df['Last Name'].apply(_has_name) | df['First Name'].apply(_has_name)]
+        # Blank chips can hold a position in the sheet but must not score.
+        scored = df['Last Name'].apply(_has_name) | df['First Name'].apply(_has_name)
+        if not scored.any():
+            return pd.DataFrame()
+        df = df.loc[scored].copy()
+        df['Pos'] = pd.to_numeric(df['Pos'], errors='coerce')
+        df = df[df['Pos'].notna()]
         if df.empty:
             return pd.DataFrame()
-        
-        # Fix positions to be sequential (1, 2, 3...) based on row order
-        # Files are always ordered, so positions should go 1,2,3,4,5,6,7,8 etc.
-        df['Pos'] = range(1, len(df) + 1)
+        df['Pos'] = df['Pos'].astype(int)
         
         # Clean up the data
         df['Last Name'] = df['Last Name'].fillna('').astype(str)
