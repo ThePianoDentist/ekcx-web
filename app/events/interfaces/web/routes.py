@@ -81,7 +81,7 @@ async def event_detail(request: Request, year: int, round_num: int):
                 "date": "November 15, 2026",
                 "location": "Farthingloe",
                 "british_cycling_url": "https://www.britishcycling.org.uk/events/details/341793/East-Kent-Cyclo-Cross-League-Round-3-FarthingloeCross",
-                "status": "upcoming"
+                "status": "completed"
             },
             4: {
                 "name": "Round 4: Lydden",

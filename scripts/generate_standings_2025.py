@@ -152,6 +152,17 @@ def read_race_result(file_path: Path) -> pd.DataFrame:
         df = df[df['Pos'].apply(lambda x: pd.notna(x) and str(x).isdigit())]
         if df.empty:
             return pd.DataFrame()
+
+        # A placed row with no name (a blank chip in the export) is not a rider.
+        def _has_name(value) -> bool:
+            if pd.isna(value):
+                return False
+            text = str(value).strip()
+            return bool(text) and text.lower() != 'nan'
+
+        df = df[df['Last Name'].apply(_has_name) | df['First Name'].apply(_has_name)]
+        if df.empty:
+            return pd.DataFrame()
         
         # Fix positions to be sequential (1, 2, 3...) based on row order
         # Files are always ordered, so positions should go 1,2,3,4,5,6,7,8 etc.
@@ -179,18 +190,21 @@ def determine_category_from_filename(filename: str) -> str:
         return 'skip'
 
     # Map filenames to categories (ignoring race numbers in the filename — round is the directory).
-    if 'elite female' in filename_lower or 'elite women' in filename_lower or 'womens' in filename_lower:
+    # "Women" does not contain "womens", so match the shorter form.
+    if 'elite female' in filename_lower or 'women' in filename_lower:
         return 'womens'
-    elif 'elite open' in filename_lower or 'senior open' in filename_lower or 'senior' in filename_lower:
-        return 'mens'
     elif 'under 12' in filename_lower or 'u12' in filename_lower:
         return 'u12'
     elif 'under 16' in filename_lower or 'u16' in filename_lower:
         return 'youth'
     elif 'masters 50' in filename_lower or 'masters50' in filename_lower or 'v50' in filename_lower or 'm50' in filename_lower:
         return 'v50'
+    # Junior/senior/M40 share one race from 2026. Match M40 before "senior"
+    # so that combined export stays on the joined open table.
     elif 'masters 40' in filename_lower or 'masters40' in filename_lower or 'v40' in filename_lower or 'm40' in filename_lower:
         return 'v40'
+    elif 'elite open' in filename_lower or 'senior open' in filename_lower or 'senior' in filename_lower:
+        return 'mens'
     else:
         return 'unknown'
 
@@ -485,6 +499,8 @@ def normalize_rider_and_team_names(all_results: Dict[str, Dict[str, List[Dict]]]
         'sfa': 'San Fairy Ann CC',
         'Bigfoot Youth Cycle Club Ltd': 'Bigfoot CC',
         'Kingston': 'Kingston Wheelers CC',
+        # Round 3 women export shortened the club to the town name.
+        'Southborough': 'Southborough & District Whls',
     }
     
     # Collect all unique riders and teams, and count occurrences
@@ -532,6 +548,10 @@ def normalize_rider_and_team_names(all_results: Dict[str, Dict[str, List[Dict]]]
         ('BRADFORD', 'OLLIE'): ('BRADFORD', 'Oliver'),
         ('MALPASS', 'JO'): ('MALPASS', 'Joanne'),
         ('SPURRIER', 'BEN'): ('SPURRIER', 'Benedict'),
+        # Same licence; the round 3 export inserted an extra letter.
+        ('BURT', 'RANDOLPOH'): ('BURT', 'Randolph'),
+        # Round 2 spelled the surname differently; the licence is on Caldar-Ramos.
+        ('CALEIA-RAMOS', 'NATASHA'): ('CALDAR-RAMOS', 'Natasha'),
     }
 
     for rider in all_riders:

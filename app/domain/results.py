@@ -55,18 +55,19 @@ def _map_filename_to_title(stem: str) -> str:
     name = stem.lower()
     if 'try cx' in name or 'trycx' in name:
         return 'Try CX'
-    if 'elite female' in name or 'elite women' in name:
+    if 'elite female' in name or 'women' in name:
         return 'Women'
-    if 'elite open' in name or 'senior open' in name or 'senior' in name:
-        return 'Senior Open'
     if 'under 12' in name or 'u12' in name:
         return 'Under 12'
     if 'under 16' in name or 'u16' in name:
         return 'Youth U16/U14'
     if 'masters 50' in name or 'masters50' in name or 'v50' in name or 'm50' in name:
         return 'Veteran 50 Open'
+    # Combined junior/senior/M40 exports must not be titled as a senior-only race.
     if 'masters 40' in name or 'masters40' in name or 'v40' in name or 'm40' in name:
         return 'Veteran 40 Open'
+    if 'elite open' in name or 'senior open' in name or 'senior' in name:
+        return 'Senior Open'
     return stem
 
 
@@ -116,6 +117,21 @@ def build_results_sections(year: int, round_num: int) -> List[Dict[str, Any]]:
         df = _clean_results_df(df, preferred_cols)
         if df.empty:
             continue
+
+        # A placed row with no name is a blank chip, not a finisher.
+        if 'Last Name' in df.columns:
+            def _named(row) -> bool:
+                for col in ('Last Name', 'First Name'):
+                    if col not in row.index:
+                        continue
+                    text = str(row[col]).strip()
+                    if text and text.lower() not in ('nan', 'none'):
+                        return True
+                return False
+
+            df = df[df.apply(_named, axis=1)]
+            if df.empty:
+                continue
 
         # DNS/DNF rows are not finishers. Renumber the remaining rows so a
         # gap from a lapped rider does not shift the places underneath.
