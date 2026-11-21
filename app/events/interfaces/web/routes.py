@@ -74,7 +74,7 @@ async def event_detail(request: Request, year: int, round_num: int):
                 "date": "October 18, 2026",
                 "location": "Dover",
                 "british_cycling_url": "https://www.britishcycling.org.uk/events/details/340011/East-Kent-Cyclo-Cross-League-Round-2-DukeofYorksCross",
-                "status": "upcoming"
+                "status": "completed"
             },
             3: {
                 "name": "Round 3: Farthingloe",

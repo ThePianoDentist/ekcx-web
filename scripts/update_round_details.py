@@ -129,9 +129,9 @@ def update_events_html_status(year: int, round_num: int, photos_url: Optional[st
     if '<span style="color: #28a745; font-weight: bold;">Upcoming</span>' in round_section:
         round_section = round_section.replace(
             '<span style="color: #28a745; font-weight: bold;">Upcoming</span>',
-            '<span style="color: #666;">Completed</span>'
+            '<span style="color: #7c3aed; font-weight: bold;">Completed</span>'
         )
-    elif '<span style="color: #666;">Completed</span>' in round_section:
+    elif '<span style="color: #7c3aed; font-weight: bold;">Completed</span>' in round_section:
         print(f"Round {round_num} already marked as completed in events.html")
     else:
         print(f"Warning: Could not find status span in round {round_num} section")

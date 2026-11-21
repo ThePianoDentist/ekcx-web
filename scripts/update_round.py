@@ -65,7 +65,7 @@ def update_events_html(year: int, round_num: int, photos_url: str) -> None:
     
     # Replace color from green to gray
     pattern = rf'(Round {round_num}:[^<]*?<strong>Status:</strong>\s*<span style="color: #28a745; font-weight: bold;">)'
-    replacement = r'<strong>Status:</strong> <span style="color: #666;">'
+    replacement = r'<strong>Status:</strong> <span style="color: #7c3aed; font-weight: bold;">'
     content = re.sub(pattern, replacement, content)
     
     # Add photos link if not present
