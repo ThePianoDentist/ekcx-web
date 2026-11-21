@@ -4,6 +4,8 @@ from typing import List, Dict, Any
 
 import pandas as pd
 
+from app.results.domain.positions import classify_position
+
 
 BASE_DIR = Path(__file__).resolve().parent
 RESULTS_JSON_PATH = BASE_DIR / "results.json"
@@ -118,19 +120,19 @@ def build_results_sections(year: int, round_num: int) -> List[Dict[str, Any]]:
         if df.empty:
             continue
 
-        # DNS/DNF rows are not finishers. Renumber the remaining rows so a
-        # gap from a lapped rider does not shift the places underneath.
         if 'Position' in df.columns:
-            def _placed(value) -> bool:
-                text = str(value).strip()
-                if text.endswith('.0'):
-                    text = text[:-2]
-                return text.isdigit()
-
-            df = df[df['Position'].apply(_placed)].copy()
+            df = df[
+                df['Position'].apply(
+                    lambda value: classify_position(value) in ("finished", "dnf")
+                )
+            ].copy()
             if df.empty:
                 continue
-            df['Position'] = range(1, len(df) + 1)
+            finish_mask = df['Position'].apply(
+                lambda value: classify_position(value) == "finished"
+            )
+            if finish_mask.any():
+                df.loc[finish_mask, 'Position'] = range(1, finish_mask.sum() + 1)
 
         table_html = df.to_html(index=False, border=0, classes='event-results-table', na_rep='')
         section_title = _map_filename_to_title(path.stem)

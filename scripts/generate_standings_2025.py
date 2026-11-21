@@ -14,6 +14,8 @@ from collections import defaultdict
 from typing import Dict, List, Tuple, Optional, Any
 import difflib
 
+from app.results.domain.positions import classify_position
+
 # Points system for Seniors/U23 and Veteran Open 40/50
 POINTS = {
     1: 100,
@@ -148,8 +150,12 @@ def read_race_result(file_path: Path) -> pd.DataFrame:
                 print(f"Warning: Missing columns in {file_path}: {missing_cols}")
                 return pd.DataFrame()
         
-        # Filter out rows with invalid positions (DNF, DNS, etc.)
-        df = df[df['Pos'].apply(lambda x: pd.notna(x) and str(x).isdigit())]
+        df = df[
+            df['Pos'].apply(
+                lambda value: pd.notna(value)
+                and classify_position(value) in ("finished", "dnf")
+            )
+        ]
         if df.empty:
             return pd.DataFrame()
 
@@ -165,11 +171,15 @@ def read_race_result(file_path: Path) -> pd.DataFrame:
         if not scored.any():
             return pd.DataFrame()
         df = df.loc[scored].copy()
-        df['Pos'] = pd.to_numeric(df['Pos'], errors='coerce')
-        df = df[df['Pos'].notna()]
-        if df.empty:
-            return pd.DataFrame()
-        df['Pos'] = df['Pos'].astype(int)
+        df['_dnf'] = df['Pos'].apply(lambda value: classify_position(value) == "dnf")
+        df.loc[df['_dnf'], 'Pos'] = pd.NA
+        finish_mask = ~df['_dnf']
+        if finish_mask.any():
+            df.loc[finish_mask, 'Pos'] = pd.to_numeric(
+                df.loc[finish_mask, 'Pos'],
+                errors='coerce',
+            )
+        df.drop(columns=['_dnf'], inplace=True)
         
         # Clean up the data
         df['Last Name'] = df['Last Name'].fillna('').astype(str)
@@ -245,10 +255,17 @@ def collect_results(results_dir: Path) -> Dict[str, Dict[str, List[Dict]]]:
             # Convert to list of dictionaries
             for _, row in df.iterrows():
                 gender_val = str(row.get('Gender', '')).strip() if 'Gender' in row else ''
+                if pd.isna(row['Pos']):
+                    position = None
+                    points = 0
+                else:
+                    position = int(row['Pos'])
+                    points = calculate_points(position)
                 result = {
                     'round': round_num,
-                    'position': int(row['Pos']),
-                    'points': calculate_points(int(row['Pos'])),
+                    'position': position,
+                    'points': points,
+                    'dnf': position is None,
                     'last_name': normalize_name(row['Last Name']),
                     'first_name': normalize_first_name(row['First Name']),
                     'team': str(row['Team']).strip(),
