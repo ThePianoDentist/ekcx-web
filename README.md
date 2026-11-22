@@ -66,7 +66,7 @@ The server will be available at http://localhost:8000
 
 ## Database
 
-SQLite schema is managed with Alembic. The default file is `var/ekcx.sqlite3` (override with `EKCX_DB_PATH`). The public site still reads CSV/JSON until ingest is wired up.
+SQLite schema is managed with Alembic. The default file is `var/ekcx.sqlite3` (override with `EKCX_DB_PATH`). The public site still reads CSV/JSON by default; database standings use `?source=db`.
 
 ```bash
 make db-upgrade
@@ -82,4 +82,4 @@ uv run alembic upgrade head
 
 For 2026 standings, the default is still the static HTML. Add `?source=db` to read the same tables from SQLite, e.g. `/standings/2026/v40?source=db`.
 
-Admin result uploads (no login yet; issue #6): `/admin/results/` lists CrossMgr exports on disk and in `result_exports`; `/admin/results/upload` accepts `.csv`/`.xlsx`. Override the results directory with `EKCX_RESULTS_ROOT` (default: repo `results/`).
+Admin result uploads (no login yet; issue #6): `/admin/results/` lists CrossMgr exports on disk and in `result_exports`; `/admin/results/upload` accepts `.csv`/`.xlsx` and refreshes parsed results and standings from all `result_exports` for that season. `make db-ingest` runs the same refresh without a new upload. Override the results directory with `EKCX_RESULTS_ROOT` (default: repo `results/`).

@@ -7,7 +7,9 @@ from starlette.responses import HTMLResponse, RedirectResponse, Response
 
 from app.db.session import get_session_factory
 from app.results.data import repository
+from app.results.domain.collect_exports import IngestError
 from app.results.domain.exports import ExportError, list_exports_for_season, store_upload
+from app.standings.domain.refresh_from_exports import refresh_season_from_exports
 from app.web.templates import templates
 
 router = APIRouter(tags=["admin-results"])
@@ -99,8 +101,9 @@ async def upload_submit(
     session = factory()
     try:
         store_upload(session, year, round_number, file.filename, data)
+        refresh_season_from_exports(session, year)
         session.commit()
-    except ExportError as exc:
+    except (ExportError, IngestError) as exc:
         session.rollback()
         return templates.TemplateResponse(
             request=request,
@@ -127,6 +130,6 @@ async def upload_submit(
     finally:
         session.close()
     return RedirectResponse(
-        url=f"/admin/results/?year={year}&msg=uploaded",
+        url=f"/admin/results/?year={year}&msg=ingested",
         status_code=303,
     )
