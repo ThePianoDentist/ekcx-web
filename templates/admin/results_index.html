@@ -11,6 +11,10 @@
         <h1>Result exports (admin)</h1>
         <p>
           <a href="/admin/results/upload?year={{ year }}">Upload file</a>
+          ·
+          <form method="post" action="/admin/logout" style="display: inline; margin: 0;">
+            <button type="submit" style="background: none; border: none; color: #0369a1; cursor: pointer; padding: 0; font: inherit; text-decoration: underline;">Log out</button>
+          </form>
         </p>
         {% if db_error %}
         <p style="color: #b91c1c;">{{ db_error }}</p>
