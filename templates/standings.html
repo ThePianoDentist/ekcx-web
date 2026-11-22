@@ -35,17 +35,6 @@
         </ul>
       </div>
       <div id="content" style="width: 100%;">
-          {% if year >= 2026 %}
-          <p style="margin: 0 0 12px 0;">
-            {% if source == 'db' %}
-            <a href="/standings/{{ year }}/{{ category }}{{ static_q | default('') }}">Static</a>
-            · <b>Database</b>
-            {% else %}
-            <b>Static</b>
-            · <a href="/standings/{{ year }}/{{ category }}{{ db_q | default('?source=db') }}">Database</a>
-            {% endif %}
-          </p>
-          {% endif %}
           <div id="standings-filter" hidden>
             <label><b>Category</b>
               <select id="standings-category"></select>

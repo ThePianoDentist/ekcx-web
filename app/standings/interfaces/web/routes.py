@@ -34,8 +34,6 @@ async def standings(
         return RedirectResponse(url=url, status_code=302)
     standings_html = _from_database(year, category) if use_db else None
     nav_q = standings_nav_query(year, resolved)
-    static_q = "?source=static" if resolved == "db" else ""
-    db_q = "" if resolved == "db" else "?source=db"
     return templates.TemplateResponse(
         request=request,
         name="standings.html",
@@ -43,11 +41,8 @@ async def standings(
             "category": category,
             "year": year,
             "selected": "standings",
-            "source": resolved,
             "standings_html": standings_html,
             "nav_q": nav_q,
-            "static_q": static_q,
-            "db_q": db_q,
         },
     )
 
