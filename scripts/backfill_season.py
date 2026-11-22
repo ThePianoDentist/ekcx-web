@@ -23,7 +23,8 @@ from sqlalchemy.orm import Session
 from app.db.session import build_sqlite_url, create_session_factory
 from app.events.data.models import Event
 from app.participants.data.models import Club, ClubMembership, NameNormalisation, Participant
-from app.results.data.models import Result
+from app.results.data.models import Result, ResultExport
+from app.results.domain.raw_export import file_to_sanitized_csv, round_export_paths
 from app.standings.data.models import ClubCategoryPoints, ClubStanding, EventPoints, Standing
 from app.standings.domain.html_standings import parse_rider_standings, parse_team_standings
 from scripts.generate_standings_2025 import (
@@ -114,6 +115,7 @@ def clear_league(session: Session) -> None:
         EventPoints,
         ClubCategoryPoints,
         Result,
+        ResultExport,
         NameNormalisation,
         ClubMembership,
         Standing,
@@ -188,6 +190,30 @@ def _participant(
     return person
 
 
+def load_raw_exports(
+    session: Session,
+    events: dict[int, Event],
+    results_dir: Path,
+) -> int:
+    stored = 0
+    for round_num in sorted(INCLUDE_ROUNDS):
+        event = events[round_num]
+        for path in round_export_paths(results_dir, round_num):
+            csv_text = file_to_sanitized_csv(path)
+            if not csv_text:
+                print(f"Skipping empty export: {path.name}", file=sys.stderr)
+                continue
+            session.add(
+                ResultExport(
+                    event_id=event.id,
+                    filename=path.name,
+                    csv_text=csv_text,
+                )
+            )
+            stored += 1
+    return stored
+
+
 def load_season(session: Session, results_dir: Path) -> None:
     all_results = collect_results(results_dir, include_rounds=INCLUDE_ROUNDS)
     _stamp_raw_names(all_results)
@@ -202,6 +228,9 @@ def load_season(session: Session, results_dir: Path) -> None:
         session.add(event)
         session.flush()
         events[spec["round_number"]] = event
+
+    export_count = load_raw_exports(session, events, results_dir)
+    print(f"Stored {export_count} raw exports (licence columns stripped) for rounds {sorted(INCLUDE_ROUNDS)}")
 
     clubs: dict = {}
     people: dict = {}

@@ -78,6 +78,6 @@ Or:
 uv run alembic upgrade head
 ```
 
-`make db-backfill` loads the current season (2026 rounds 1–2) into that file and checks it against `templates/standings/2026/`. Round 3 is left out. Older seasons stay on the static HTML pages. Set `EKCX_DB_PATH` to choose the file; staging and production each have their own.
+`make db-backfill` loads the current season (2026 rounds 1–2) into that file: parsed `results` rows, standings tables, and one `result_exports` row per CrossMgr file (body stored as CSV text with British Cycling licence columns removed). It then checks against `templates/standings/2026/`. Round 3 is left out. On staging, run `./scripts/backfill_staging_db.sh` from the app root after `results/2026/{1,2}` is present. Set `EKCX_DB_PATH` to choose the file; staging and production each have their own.
 
 For 2026 standings, the default is still the static HTML. Add `?source=db` to read the same tables from SQLite, e.g. `/standings/2026/v40?source=db`.
