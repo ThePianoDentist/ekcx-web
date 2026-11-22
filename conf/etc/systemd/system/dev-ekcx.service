@@ -5,6 +5,7 @@ After=network.target
 [Service]
 User=jdog
 WorkingDirectory=/home/jdog/ekcx-dev
+Environment=EKCX_DB_PATH=/home/jdog/ekcx-dev/var/ekcx.sqlite3
 LimitNOFILE=4096
 ExecStart=/home/jdog/.local/bin/uv run gunicorn main:app --workers 2 -k worker.MyUvicornWorker --bind unix:dev-ekcx.sock --error-logfile /var/log/dev-ekcx/error_log.txt
 Restart=on-failure

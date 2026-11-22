@@ -24,6 +24,7 @@ def create_engine_for_path(db_path: Optional[PathLike] = None):
         build_sqlite_url(db_path),
         future=True,
         echo=False,
+        connect_args={"check_same_thread": False},
     )
 
     if engine.url.get_backend_name() == "sqlite":
@@ -40,3 +41,13 @@ def create_engine_for_path(db_path: Optional[PathLike] = None):
 def create_session_factory(db_path: Optional[PathLike] = None) -> sessionmaker[Session]:
     engine = create_engine_for_path(db_path)
     return sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
+
+
+_session_factory: Optional[sessionmaker[Session]] = None
+
+
+def get_session_factory() -> sessionmaker[Session]:
+    global _session_factory
+    if _session_factory is None:
+        _session_factory = create_session_factory()
+    return _session_factory

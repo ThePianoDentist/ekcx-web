@@ -11,9 +11,10 @@
         {% include "header.html" %}
     <div id="site_content">
       {% include "nav.html" %}
+        {% set qs = '?source=db' if source == 'db' else '' %}
         <div id="menubar_standings_year"  class="menubar">
         <ul id="menu_standings_year" class="menu">
-            <li {{ 'class=selected' if year == 2026 else '' }}><a href="/standings/2026/{{category}}">26/27</a></li>
+            <li {{ 'class=selected' if year == 2026 else '' }}><a href="/standings/2026/{{category}}{{ qs }}">26/27</a></li>
             <li {{ 'class=selected' if year == 2025 else '' }}><a href="/standings/2025/{{category}}">25/26</a></li>
             <li {{ 'class=selected' if year == 2024 else '' }}><a href="/standings/2024/{{category}}">24/25</a></li>
             <li {{ 'class=selected' if year == 2023 else '' }}><a href="/standings/2023/{{category}}">23/24</a></li>
@@ -21,19 +22,30 @@
       </div>
       <div id="menubar_standings"  class="menubar">
         <ul id="menu_standings" class="menu">
-            <li {{ 'class=selected' if category == 'v50' else '' }}><a href="/standings/{{year}}/v50">Masters 50/60</a></li>
-            <li {{ 'class=selected' if category == 'v40' else '' }}><a href="/standings/{{year}}/v40">{% if year >= 2026 %}Senior/V40/Junior{% else %}Masters 40/Junior{% endif %}</a></li>
-            <li  {{ 'class=selected' if category == 'womens' else '' }}><a href="/standings/{{year}}/womens">Women</a></li>
+            <li {{ 'class=selected' if category == 'v50' else '' }}><a href="/standings/{{year}}/v50{{ qs }}">Masters 50/60</a></li>
+            <li {{ 'class=selected' if category == 'v40' else '' }}><a href="/standings/{{year}}/v40{{ qs }}">{% if year >= 2026 %}Senior/V40/Junior{% else %}Masters 40/Junior{% endif %}</a></li>
+            <li  {{ 'class=selected' if category == 'womens' else '' }}><a href="/standings/{{year}}/womens{{ qs }}">Women</a></li>
             {% if year < 2026 %}
             <li {{ 'class=selected' if category == 'mens' else '' }}><a href="/standings/{{year}}/mens">Senior Open</a></li>
             {% endif %}
-            <li {{ 'class=selected' if category == 'youth' else '' }}><a href="/standings/{{year}}/youth">Youth</a></li>
-            <li {{ 'class=selected' if category == 'u12' else '' }}><a href="/standings/{{year}}/u12">Under 12</a></li>
-            <li {{ 'class=selected' if category == 'teams' else '' }}><a href="/standings/{{year}}/teams">Teams</a></li>
+            <li {{ 'class=selected' if category == 'youth' else '' }}><a href="/standings/{{year}}/youth{{ qs }}">Youth</a></li>
+            <li {{ 'class=selected' if category == 'u12' else '' }}><a href="/standings/{{year}}/u12{{ qs }}">Under 12</a></li>
+            <li {{ 'class=selected' if category == 'teams' else '' }}><a href="/standings/{{year}}/teams{{ qs }}">Teams</a></li>
 
         </ul>
       </div>
       <div id="content" style="width: 100%;">
+          {% if year >= 2026 %}
+          <p style="margin: 0 0 12px 0;">
+            {% if source == 'db' %}
+            <a href="/standings/{{ year }}/{{ category }}">Static</a>
+            · <b>Database</b>
+            {% else %}
+            <b>Static</b>
+            · <a href="/standings/{{ year }}/{{ category }}?source=db">Database</a>
+            {% endif %}
+          </p>
+          {% endif %}
           <div id="standings-filter" hidden>
             <label><b>Category</b>
               <select id="standings-category"></select>
@@ -42,7 +54,11 @@
               <select id="standings-gender"></select>
             </label>
           </div>
+          {% if standings_html %}
+          {{ standings_html | safe }}
+          {% else %}
           {% include "standings/%s/%s.html" % (year, category) %}
+          {% endif %}
       </div>
       <script>
         (function () {

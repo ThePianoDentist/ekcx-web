@@ -222,10 +222,15 @@ def determine_category_from_filename(filename: str) -> str:
         return 'unknown'
 
 
-def collect_results(results_dir: Path) -> Dict[str, Dict[str, List[Dict]]]:
+def collect_results(
+    results_dir: Path,
+    include_rounds: Optional[set] = None,
+) -> Dict[str, Dict[str, List[Dict]]]:
     """
     Collect all race results.
     Returns: {category: {round: [result_dict, ...]}}
+
+    include_rounds limits which round directories are read. None reads every round.
     """
     all_results = defaultdict(lambda: defaultdict(list))
     
@@ -237,6 +242,8 @@ def collect_results(results_dir: Path) -> Dict[str, Dict[str, List[Dict]]]:
     
     # Sort by round number
     for round_num_int, round_dir in sorted(round_dirs):
+        if include_rounds is not None and round_num_int not in include_rounds:
+            continue
         round_num = str(round_num_int)
         
         # Process each Excel file in the round directory
