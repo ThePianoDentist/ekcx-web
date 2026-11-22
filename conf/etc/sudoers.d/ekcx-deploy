@@ -1,0 +1,2 @@
+# Deploy restarts only (install: sudo install -m 0440 ... /etc/sudoers.d/ekcx-deploy && sudo visudo -cf ...)
+jdog ALL=(root) NOPASSWD: /bin/systemctl restart ekcx.service, /bin/systemctl restart dev-ekcx.service

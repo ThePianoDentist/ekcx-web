@@ -27,6 +27,7 @@ Skip a PRD for typos, tiny copy tweaks, and similarly small fixes. Bugs use the 
     - People can review post-merge and suggest followups
     - Reviews much more important when project is live and runing with users, and not greenfield any more
     - We'll do a tidying sweep before making big refactor live
+6. Merges to `staging` / `main` auto-deploy dev and prod ([deploy.md](deploy.md)).
 
 ## AI agents
 

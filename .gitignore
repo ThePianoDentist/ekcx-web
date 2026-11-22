@@ -124,6 +124,8 @@ celerybeat.pid
 .env
 local/shell.env
 local/ekcx.sqlite3*
+local/github-actions-deploy
+local/github-actions-deploy.pub
 .venv
 env/
 venv/

@@ -25,7 +25,9 @@ Workflow: [docs/development.md](docs/development.md) (branches, PRDs, PRs).
 ```
 
 - Currently just a single-instance VPS on DigitalOcean. That will be sufficient for a long time.
-  - No dev/staging site yet, but with so few dependencies, it's very easy to test locally.
+  - Production: [ekcx.co.uk](https://ekcx.co.uk) (`main` → `/home/jdog/ekcx-web`).
+  - Staging: [dev.ekcx.co.uk](https://dev.ekcx.co.uk) (`staging` → `/home/jdog/ekcx-dev`).
+  - Pushes to `main` / `staging` deploy via GitHub Actions ([docs/deploy.md](docs/deploy.md)).
 - No database server yet. We'll stick with SQLite whilst in development, but add a Postgres DB instance when ready.
 - Configuration files the server needs live in `/conf`. We use nginx as a reverse-proxy in front of the Python server. We use systemd for running the webserver.
 - Production secrets (API keys, session secret): `/etc/ekcx/environment`, managed on the VPS with `sudo ./scripts/server-ekcx-env.sh` after `git pull` (see script help).
