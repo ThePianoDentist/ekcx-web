@@ -21,6 +21,7 @@ app/
   events/{data,domain,interfaces/{web,admin,scripts}}
   participants/{data,domain,interfaces/{web,admin}}
   users/{data,domain,interfaces/admin}
+  mail/{data,domain,interfaces/scripts}
 ```
 
 Raw exports stay at repo-root paths (e.g. `results/2025/1/*.csv`). Not inside `app/`.
