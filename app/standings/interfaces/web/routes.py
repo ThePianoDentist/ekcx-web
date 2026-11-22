@@ -4,18 +4,16 @@ from starlette.requests import Request
 from starlette.responses import HTMLResponse, RedirectResponse
 
 from app.db.session import get_session_factory
+from app.standings.config import (
+    CURRENT_DB_STANDINGS_FROM_YEAR,
+    resolve_standings_source,
+    standings_nav_query,
+    uses_database,
+)
 from app.standings.domain.render import render_standings
 from app.web.templates import templates
 
 router = APIRouter()
-
-# From 2026, seniors start in the Masters 40 race, so that page is the joined classification.
-JOINED_OPEN_FROM_YEAR = 2026
-
-
-def shows_database(year: int, source: str) -> bool:
-    """2026 can be read from SQLite. Older seasons stay on the static pages."""
-    return year >= JOINED_OPEN_FROM_YEAR and source == "db"
 
 
 @router.get("/standings/{year}/{category}", response_class=HTMLResponse)
@@ -23,16 +21,21 @@ async def standings(
     request: Request,
     category: str,
     year: int,
-    source: str = Query(default="static"),
+    source: str | None = Query(default=None, pattern="^(static|db)$"),
 ):
     year = year or 2026
-    use_db = shows_database(year, source)
-    if year >= JOINED_OPEN_FROM_YEAR and category == "mens":
+    resolved = resolve_standings_source(year, source)
+    use_db = uses_database(year, resolved)
+    if year >= CURRENT_DB_STANDINGS_FROM_YEAR and category == "mens":
         url = f"/standings/{year}/v40"
-        if use_db:
-            url += "?source=db"
+        nav_q = standings_nav_query(year, resolved)
+        if nav_q:
+            url += nav_q
         return RedirectResponse(url=url, status_code=302)
     standings_html = _from_database(year, category) if use_db else None
+    nav_q = standings_nav_query(year, resolved)
+    static_q = "?source=static" if resolved == "db" else ""
+    db_q = "" if resolved == "db" else "?source=db"
     return templates.TemplateResponse(
         request=request,
         name="standings.html",
@@ -40,8 +43,11 @@ async def standings(
             "category": category,
             "year": year,
             "selected": "standings",
-            "source": "db" if use_db else "static",
+            "source": resolved,
             "standings_html": standings_html,
+            "nav_q": nav_q,
+            "static_q": static_q,
+            "db_q": db_q,
         },
     )
 

@@ -11,7 +11,7 @@
         {% include "header.html" %}
     <div id="site_content">
       {% include "nav.html" %}
-        {% set qs = '?source=db' if source == 'db' else '' %}
+        {% set qs = nav_q | default('') %}
         <div id="menubar_standings_year"  class="menubar">
         <ul id="menu_standings_year" class="menu">
             <li {{ 'class=selected' if year == 2026 else '' }}><a href="/standings/2026/{{category}}{{ qs }}">26/27</a></li>
@@ -38,11 +38,11 @@
           {% if year >= 2026 %}
           <p style="margin: 0 0 12px 0;">
             {% if source == 'db' %}
-            <a href="/standings/{{ year }}/{{ category }}">Static</a>
+            <a href="/standings/{{ year }}/{{ category }}{{ static_q | default('') }}">Static</a>
             · <b>Database</b>
             {% else %}
             <b>Static</b>
-            · <a href="/standings/{{ year }}/{{ category }}?source=db">Database</a>
+            · <a href="/standings/{{ year }}/{{ category }}{{ db_q | default('?source=db') }}">Database</a>
             {% endif %}
           </p>
           {% endif %}

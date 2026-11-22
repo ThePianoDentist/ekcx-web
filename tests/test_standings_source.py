@@ -10,19 +10,42 @@ from app.db.session import create_session_factory
 from app.events.data.models import Event
 from app.participants.data.models import Club, Participant
 from app.results.data.models import Result
+from app.standings.config import (
+    default_standings_source,
+    resolve_standings_source,
+    standings_nav_query,
+    uses_database,
+)
 from app.standings.data.models import ClubCategoryPoints, ClubStanding, EventPoints, Standing
 from app.standings.domain.html_standings import parse_rider_standings, parse_team_standings
 from app.standings.domain.render import render_standings
-from app.standings.interfaces.web.routes import shows_database
 
 
-def test_shows_database_only_for_this_season():
+def test_uses_database_only_for_this_season():
     # Setup:
     # Run:
     # Check:
-    assert shows_database(2026, "db") is True
-    assert shows_database(2026, "static") is False
-    assert shows_database(2025, "db") is False
+    assert uses_database(2026, "db") is True
+    assert uses_database(2026, "static") is False
+    assert uses_database(2025, "db") is False
+
+
+def test_staging_defaults_2026_to_database(monkeypatch):
+    # Setup:
+    monkeypatch.delenv("EKCX_STAGING", raising=False)
+    # Run / Check:
+    assert default_standings_source(2026) == "static"
+    assert resolve_standings_source(2026, None) == "static"
+    assert standings_nav_query(2026, "db") == "?source=db"
+    assert standings_nav_query(2025, "db") == ""
+
+    monkeypatch.setenv("EKCX_STAGING", "1")
+    assert default_standings_source(2026) == "db"
+    assert default_standings_source(2025) == "static"
+    assert resolve_standings_source(2026, None) == "db"
+    assert resolve_standings_source(2026, "static") == "static"
+    assert standings_nav_query(2026, "db") == ""
+    assert standings_nav_query(2026, "static") == "?source=static"
 
 
 def test_render_standings_from_sqlite(tmp_path: Path):
