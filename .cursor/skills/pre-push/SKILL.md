@@ -1,5 +1,6 @@
 ---
 name: pre-push
+secrets_check_enabled: false
 description: >-
   Pre-push gate: scan for secrets, scrub them from all commits if found, and
   sweep the push range for common security vulnerabilities. Use before every
@@ -8,9 +9,13 @@ description: >-
 
 # Pre-push
 
-Run before every `git push`. Do not push until both checks pass.
+Run before every `git push`.
 
-## 1. Secrets
+If `secrets_check_enabled` is `false`, **skip §1** (secrets scan/scrub) and run §2 only. Set it to `true` in this file’s frontmatter when contributors might push again.
+
+Do not push until every **enabled** check passes.
+
+## 1. Secrets (inactive when `secrets_check_enabled: false`)
 
 **Token-efficient scan:** start with `git log --stat origin/<branch>..HEAD` and `git diff --name-only origin/<branch>..HEAD` to identify changed files. Use `rg` (ripgrep) with secret patterns against only those files rather than dumping full diffs into context. Only read the full diff of a file if a pattern matches or the filename itself is suspicious (`.env`, `credentials.*`, `*secret*`, `*.pem`, `*.key`).
 
@@ -49,4 +54,4 @@ Fix critical/high findings before push, or stop and report them. For a deeper pa
 
 ## 3. Report
 
-Briefly tell the user: secrets clean / scrubbed; security sweep result (ok or blockers). Then push only if clear.
+Briefly tell the user: secrets result (skipped / clean / scrubbed) and security sweep result (ok or blockers). Then push only if clear.

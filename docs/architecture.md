@@ -39,7 +39,7 @@ Admin is near-term: upload results, edit events, declare rider merges. Colocatin
 
 ## Current vs target
 
-Today: public pages still read CSV/JSON/HTML. SQLite models live under each slice’s `data/`; Alembic manages schema. `make db-backfill` seeds events, `result_exports`, and parsed tables from disk (2026 rounds 1–2). Ingest (`make db-ingest` or admin upload) reparses every `result_exports` row for a year and rebuilds `results`/standings. Standings for 2026 can be viewed from SQLite with `?source=db`; the default stays static HTML. Older seasons stay static HTML. Target: move domain/data into slice packages as we touch each area.
+Today: public pages still read CSV/JSON/HTML. SQLite models live under each slice’s `data/`; Alembic manages schema. `make db-backfill` seeds events, `result_exports`, and parsed tables from disk (2026 rounds 1–2). Admin upload saves `result_exports` as `pending_review`, runs rider/club name checks (stored cross-season rules + new similarity suggestions), then ingests only after confirm/accept-all; confirm rebuilds `results`/standings from **ingested** exports only. `rider_name_rules` / `club_name_rules` persist across seasons. Standings for 2026: `?source=db`; default static HTML. Target: move domain/data into slice packages as we touch each area.
 
 ## SQLite
 

@@ -20,7 +20,7 @@
         <p style="color: #b91c1c;">{{ db_error }}</p>
         {% endif %}
         {% if msg == "ingested" %}
-        <p style="color: #15803d;">Upload saved and standings refreshed from database exports.</p>
+        <p style="color: #15803d;">Confirmed — standings refreshed from ingested exports.</p>
         {% endif %}
         <form method="get" action="/admin/results/" style="margin-bottom: 1em;">
           <label>Season year:
@@ -54,6 +54,9 @@
               <td style="padding: 6px;">
                 {% if row.export_id %}
                 <a href="/admin/results/exports/{{ row.export_id }}/download">Download</a>
+                {% if row.ingest_status == "pending_review" %}
+                · <a href="/admin/results/exports/{{ row.export_id }}/review?year={{ year }}">Review</a>
+                {% endif %}
                 {% endif %}
               </td>
             </tr>

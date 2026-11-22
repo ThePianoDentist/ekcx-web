@@ -1,18 +1,41 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, File, Form, UploadFile
+from sqlalchemy import select
 from sqlalchemy.exc import OperationalError
+from sqlalchemy.orm import joinedload
 from starlette.requests import Request
 from starlette.responses import HTMLResponse, RedirectResponse, Response
 
 from app.db.session import get_session_factory
+from app.participants.domain.name_normalisation import (
+    load_rules,
+    maps_for_accepted,
+    new_suggestions,
+    upsert_accepted_suggestions,
+)
 from app.results.data import repository
-from app.results.domain.collect_exports import IngestError
+from app.results.data.models import ResultExport
+from app.results.data.repository import INGEST_STATUS_INGESTED
+from app.results.domain.collect_exports import IngestError, collect_results_from_exports
 from app.results.domain.exports import ExportError, list_exports_for_season, store_upload
+from app.results.domain.ingest_review import (
+    ConfirmValidationError,
+    apply_maps_to_csv,
+    csv_text_diff,
+    validate_confirm,
+)
+from app.results.domain.review_context import build_export_review
 from app.standings.domain.refresh_from_exports import refresh_season_from_exports
 from app.web.templates import templates
 
 router = APIRouter(tags=["admin-results"])
+
+
+def _parse_id_list(values: list[str] | None) -> set[str]:
+    if not values:
+        return set()
+    return {v for v in values if v}
 
 
 @router.get("/", response_class=HTMLResponse)
@@ -60,13 +83,204 @@ async def download_export(export_id: int):
         session.close()
 
 
+@router.get("/exports/{export_id}/download-suggested")
+async def download_suggested_export(export_id: int, year: int = 2026):
+    factory = get_session_factory()
+    session = factory()
+    try:
+        export = repository.get_export(session, export_id)
+        if export is None:
+            return Response(status_code=404, content="Not found")
+        review = build_export_review(session, export, year)
+        rules = load_rules(session)
+        accepted = {s.id for s in review.suggestions}
+        rider_map, team_map = maps_for_accepted(
+            review.stored + review.suggestions,
+            accepted,
+            rules,
+        )
+        suggested = apply_maps_to_csv(export.csv_text, rider_map, team_map)
+        headers = {
+            "Content-Disposition": f'attachment; filename="suggested_{export.filename}"',
+        }
+        return Response(
+            content=suggested,
+            media_type="text/csv; charset=utf-8",
+            headers=headers,
+        )
+    finally:
+        session.close()
+
+
+@router.get("/exports/{export_id}/review", response_class=HTMLResponse)
+async def export_review(request: Request, export_id: int, year: int = 2026, error: str | None = None):
+    factory = get_session_factory()
+    session = factory()
+    try:
+        export = session.scalar(
+            select(ResultExport)
+            .where(ResultExport.id == export_id)
+            .options(joinedload(ResultExport.event))
+        )
+        if export is None:
+            return Response(status_code=404, content="Not found")
+        review = build_export_review(session, export, year)
+        csv_diff = None
+        if export.previous_csv_text:
+            csv_diff = csv_text_diff(export.previous_csv_text, export.csv_text)
+        return templates.TemplateResponse(
+            request=request,
+            name="admin/results_review.html",
+            context={
+                "year": year,
+                "review": review,
+                "export_id": export_id,
+                "csv_diff": csv_diff,
+                "error": error,
+            },
+        )
+    finally:
+        session.close()
+
+
+def _finish_ingest(session, export: ResultExport, year: int) -> None:
+    repository.mark_export_ingested(session, export)
+    refresh_season_from_exports(session, year)
+
+
+@router.post("/exports/{export_id}/accept-all")
+async def export_accept_all(export_id: int, year: int = Form(...)):
+    factory = get_session_factory()
+    session = factory()
+    try:
+        export = repository.get_export(session, export_id)
+        if export is None:
+            return Response(status_code=404, content="Not found")
+        review = build_export_review(session, export, year)
+        accepted = {s.id for s in review.suggestions}
+        rider_map, team_map = maps_for_accepted(
+            review.stored + review.suggestions,
+            accepted,
+            rules,
+        )
+        export.csv_text = apply_maps_to_csv(export.csv_text, rider_map, team_map)
+        upsert_accepted_suggestions(
+            session, review.suggestions, accepted, source="admin"
+        )
+        _finish_ingest(session, export, year)
+        session.commit()
+    except (IngestError, OperationalError) as exc:
+        session.rollback()
+        msg = exc.message if hasattr(exc, "message") else str(exc)
+        return RedirectResponse(
+            url=f"/admin/results/exports/{export_id}/review?year={year}&error={msg}",
+            status_code=303,
+        )
+    finally:
+        session.close()
+    return RedirectResponse(
+        url=f"/admin/results/?year={year}&msg=ingested",
+        status_code=303,
+    )
+
+
+@router.post("/exports/{export_id}/confirm")
+async def export_confirm(
+    export_id: int,
+    year: int = Form(...),
+    accept: list[str] | None = Form(None),
+    ignore: list[str] | None = Form(None),
+    file: UploadFile | None = File(None),
+    confirm_overwrite: str | None = Form(None),
+):
+    factory = get_session_factory()
+    session = factory()
+    try:
+        export = repository.get_export(session, export_id)
+        if export is None:
+            return Response(status_code=404, content="Not found")
+        if file and file.filename:
+            data = await file.read()
+            from app.results.domain.exports import safe_filename
+            from app.results.domain.raw_export import file_to_sanitized_csv
+            from pathlib import Path
+            import tempfile
+
+            tmp = Path(tempfile.mkdtemp()) / safe_filename(file.filename)
+            tmp.write_bytes(data)
+            csv_text = file_to_sanitized_csv(tmp)
+            tmp.unlink(missing_ok=True)
+            if not csv_text:
+                raise ExportError("File is empty or not a valid CrossMgr export after sanitizing")
+            export.csv_text = csv_text
+
+        if export.previous_csv_text and confirm_overwrite != "yes":
+            return RedirectResponse(
+                url=f"/admin/results/exports/{export_id}/review?year={year}&error="
+                "Check the box to confirm overwriting standings for this season.",
+                status_code=303,
+            )
+
+        review = build_export_review(session, export, year)
+        rules = load_rules(session)
+        accepted_ids = _parse_id_list(accept)
+        ignored_ids = _parse_id_list(ignore)
+        validate_confirm(export.csv_text, review.suggestions, accepted_ids, ignored_ids)
+
+        rider_map, team_map = maps_for_accepted(
+            review.stored + review.suggestions,
+            accepted_ids,
+            rules,
+        )
+        export.csv_text = apply_maps_to_csv(export.csv_text, rider_map, team_map)
+        upsert_accepted_suggestions(
+            session, review.suggestions, accepted_ids, source="admin"
+        )
+        _finish_ingest(session, export, year)
+        session.commit()
+    except ConfirmValidationError as exc:
+        session.rollback()
+        return RedirectResponse(
+            url=f"/admin/results/exports/{export_id}/review?year={year}&error={exc.message}",
+            status_code=303,
+        )
+    except (ExportError, IngestError) as exc:
+        session.rollback()
+        msg = exc.message if hasattr(exc, "message") else str(exc)
+        return RedirectResponse(
+            url=f"/admin/results/exports/{export_id}/review?year={year}&error={msg}",
+            status_code=303,
+        )
+    except OperationalError:
+        session.rollback()
+        return RedirectResponse(
+            url=f"/admin/results/exports/{export_id}/review?year={year}&error=Database+not+available",
+            status_code=303,
+        )
+    finally:
+        session.close()
+    return RedirectResponse(
+        url=f"/admin/results/?year={year}&msg=ingested",
+        status_code=303,
+    )
+
+
 @router.get("/upload", response_class=HTMLResponse)
 async def upload_form(
     request: Request,
     year: int = 2026,
     round_number: int = 1,
     error: str | None = None,
+    warn_overwrite: int | None = None,
 ):
+    overwrite_export = None
+    factory = get_session_factory()
+    if warn_overwrite is not None:
+        session = factory()
+        try:
+            overwrite_export = repository.get_export(session, warn_overwrite)
+        finally:
+            session.close()
     return templates.TemplateResponse(
         request=request,
         name="admin/results_upload.html",
@@ -74,6 +288,7 @@ async def upload_form(
             "year": year,
             "round_number": round_number,
             "error": error,
+            "overwrite_export": overwrite_export,
         },
     )
 
@@ -84,6 +299,7 @@ async def upload_submit(
     year: int = Form(...),
     round_number: int = Form(...),
     file: UploadFile = File(...),
+    confirm_overwrite: str | None = Form(None),
 ):
     if not file.filename:
         return templates.TemplateResponse(
@@ -100,10 +316,47 @@ async def upload_submit(
     factory = get_session_factory()
     session = factory()
     try:
-        store_upload(session, year, round_number, file.filename, data)
-        refresh_season_from_exports(session, year)
+        from app.results.domain.exports import safe_filename
+
+        event = repository.find_event(session, year, round_number)
+        if event is None:
+            raise ExportError(
+                f"No event for {year} round {round_number}. Run db-backfill or add the event first."
+            )
+        name = safe_filename(file.filename)
+        existing = session.scalar(
+            select(ResultExport).where(
+                ResultExport.event_id == event.id,
+                ResultExport.filename == name,
+            )
+        )
+        if (
+            existing is not None
+            and existing.ingest_status == INGEST_STATUS_INGESTED
+            and confirm_overwrite != "yes"
+        ):
+            return templates.TemplateResponse(
+                request=request,
+                name="admin/results_upload.html",
+                context={
+                    "year": year,
+                    "round_number": round_number,
+                    "error": (
+                        "This file was already ingested. "
+                        "Replace it only if you intend to regenerate standings for the whole season."
+                    ),
+                    "overwrite_export": existing,
+                    "pending_filename": name,
+                    "show_overwrite_confirm": True,
+                },
+                status_code=400,
+            )
+
+        export = store_upload(session, year, round_number, file.filename, data)
+        repository.mark_export_pending_review(session, export)
         session.commit()
-    except (ExportError, IngestError) as exc:
+        export_id = export.id
+    except ExportError as exc:
         session.rollback()
         return templates.TemplateResponse(
             request=request,
@@ -130,6 +383,6 @@ async def upload_submit(
     finally:
         session.close()
     return RedirectResponse(
-        url=f"/admin/results/?year={year}&msg=ingested",
+        url=f"/admin/results/exports/{export_id}/review?year={year}",
         status_code=303,
     )

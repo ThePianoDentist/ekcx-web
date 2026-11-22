@@ -10,6 +10,7 @@ from app.events.data.models import Event
 from app.results.data.models import ResultExport
 
 INGEST_STATUS_STORED = "stored"
+INGEST_STATUS_PENDING_REVIEW = "pending_review"
 INGEST_STATUS_INGESTED = "ingested"
 
 
@@ -47,6 +48,8 @@ def upsert_export(
     )
     now = datetime.utcnow()
     if existing is not None:
+        if existing.ingest_status == INGEST_STATUS_INGESTED:
+            existing.previous_csv_text = existing.csv_text
         existing.csv_text = csv_text
         existing.uploaded_at = now
         existing.ingest_status = INGEST_STATUS_STORED
@@ -64,7 +67,19 @@ def upsert_export(
     return row
 
 
+def mark_export_pending_review(session: Session, export: ResultExport) -> None:
+    export.ingest_status = INGEST_STATUS_PENDING_REVIEW
+    session.flush()
+
+
+def mark_export_ingested(session: Session, export: ResultExport) -> None:
+    export.ingest_status = INGEST_STATUS_INGESTED
+    export.previous_csv_text = None
+    session.flush()
+
+
 def mark_exports_ingested(session: Session, year: int) -> None:
+    """Mark every export for a season ingested (backfill / scripts)."""
     for export, _event in list_exports_for_year(session, year):
         export.ingest_status = INGEST_STATUS_INGESTED
     session.flush()

@@ -438,10 +438,24 @@ def choose_team_target(team1: str, team2: str, counts: Dict[str, int]) -> str:
     return team1 if team1 > team2 else team2
 
 
-def normalize_rider_and_team_names(all_results: Dict[str, Dict[str, List[Dict]]]) -> Tuple[Dict, Dict]:
-    """Normalize rider names and team names, printing where normalization occurred."""
-    rider_normalizations = {}
-    team_normalizations = {}
+def normalize_rider_and_team_names(
+    all_results: Dict[str, Dict[str, List[Dict]]],
+    *,
+    merge_similar: bool = True,
+    apply_to_results: bool = True,
+    stored_rider_rules: Optional[Dict] = None,
+    stored_team_rules: Optional[Dict] = None,
+    use_script_predefined: bool = True,
+    log: bool = True,
+) -> Tuple[Dict, Dict]:
+    """Normalize rider names and team names; optional similarity merge and in-place apply."""
+
+    def _log(msg: str) -> None:
+        if log:
+            print(msg)
+
+    rider_normalizations = dict(stored_rider_rules or {})
+    team_normalizations = dict(stored_team_rules or {})
     
     # Predefined team name normalizations (abbreviations, known variations)
     predefined_team_normalizations = {
@@ -496,10 +510,10 @@ def normalize_rider_and_team_names(all_results: Dict[str, Dict[str, List[Dict]]]
             rider_map[key] = target  # Update map to use target
             if original != target:
                 rider_normalizations[original] = target
-                print(f"Rider normalized (exact match): {original} -> {target}")
+                _log(f"Rider normalized (exact match): {original} -> {target}")
             if existing != target:
                 rider_normalizations[existing] = target
-                print(f"Rider normalized (exact match): {existing} -> {target}")
+                _log(f"Rider normalized (exact match): {existing} -> {target}")
     
     # Pass 1.5: Add predefined rider normalizations (before similarity matching)
     # Handle predefined normalizations with case-insensitive matching
@@ -520,38 +534,39 @@ def normalize_rider_and_team_names(all_results: Dict[str, Dict[str, List[Dict]]]
         ('DE WILDE-GRAY', 'ADAM'): ('DE WILDE-GREY', 'Adam'),
     }
 
-    for rider in all_riders:
-        rider_last_upper = rider[0].upper()
-        rider_first_title = rider[1].title()
-        rider_key = (rider_last_upper, rider[1].upper())
-        if rider_key in predefined_rider_normalizations:
-            target = predefined_rider_normalizations[rider_key]
-            if rider != target:
-                rider_normalizations[rider] = target
-                print(f"Rider normalized (predefined): {rider} -> {target}")
+    if use_script_predefined:
+        for rider in all_riders:
+            rider_last_upper = rider[0].upper()
+            rider_first_title = rider[1].title()
+            rider_key = (rider_last_upper, rider[1].upper())
+            if rider_key in predefined_rider_normalizations:
+                target = predefined_rider_normalizations[rider_key]
+                if rider != target:
+                    rider_normalizations[rider] = target
+                    _log(f"Rider normalized (predefined): {rider} -> {target}")
 
-        # Hannah Merrington/Nicholson normalization
-        # Normalize both Nicholson and any variant of Merrington (with 1 or 2 R's) to MERRINGTON
-        if rider_first_title == 'Hannah' and (rider_last_upper == 'NICHOLSON' or 
-                                               rider_last_upper == 'MERINGTON' or 
-                                               rider_last_upper == 'MERRINGTON'):
-            if rider != normalized_target:
-                rider_normalizations[rider] = normalized_target
-                print(f"Rider normalized (predefined): {rider} -> {normalized_target}")
-        
-        # Danielle Petersmann normalization
-        # Handle both "Daniel PETERSMAN" (misspelled first and last) and "Daniel PETERSMANN" (misspelled first only)
-        # Also handle "Danielle PETERSMAN" (misspelled last only)
-        if ((rider_last_upper == 'PETERSMAN' or rider_last_upper == 'PETERSMANN') and 
-            (rider_first_title == 'Daniel' or rider_first_title == 'Danielle')):
-            if rider != danielle_target:
-                rider_normalizations[rider] = danielle_target
-                print(f"Rider normalized (predefined): {rider} -> {danielle_target}")
-    
+            # Hannah Merrington/Nicholson normalization
+            if rider_first_title == 'Hannah' and (
+                rider_last_upper == 'NICHOLSON'
+                or rider_last_upper == 'MERINGTON'
+                or rider_last_upper == 'MERRINGTON'
+            ):
+                if rider != normalized_target:
+                    rider_normalizations[rider] = normalized_target
+                    _log(f"Rider normalized (predefined): {rider} -> {normalized_target}")
+
+            if (
+                (rider_last_upper == 'PETERSMAN' or rider_last_upper == 'PETERSMANN')
+                and (rider_first_title == 'Daniel' or rider_first_title == 'Danielle')
+            ):
+                if rider != danielle_target:
+                    rider_normalizations[rider] = danielle_target
+                    _log(f"Rider normalized (predefined): {rider} -> {danielle_target}")
+
     # Pass 2: Global similarity matching for riders
     riders_list = sorted(list(all_riders))
-    similar_riders = find_similar_riders(riders_list)
-    
+    similar_riders = find_similar_riders(riders_list) if merge_similar else []
+
     for (last1, first1), (last2, first2) in similar_riders:
         rider1 = (last1, first1)
         rider2 = (last2, first2)
@@ -566,13 +581,13 @@ def normalize_rider_and_team_names(all_results: Dict[str, Dict[str, List[Dict]]]
         # Normalize both to target
         if rider1 != target:
             rider_normalizations[rider1] = target
-            print(f"Rider normalized (similar): {rider1} -> {target}")
+            _log(f"Rider normalized (similar): {rider1} -> {target}")
         if rider2 != target:
             rider_normalizations[rider2] = target
-            print(f"Rider normalized (similar): {rider2} -> {target}")
+            _log(f"Rider normalized (similar): {rider2} -> {target}")
     
     # Pass 3: Global similarity matching for teams
-    similar_teams = find_similar_teams(all_teams)
+    similar_teams = find_similar_teams(all_teams) if merge_similar else []
     for team1, team2 in similar_teams:
         # Skip if already normalized
         if team1 in team_normalizations or team2 in team_normalizations:
@@ -584,17 +599,21 @@ def normalize_rider_and_team_names(all_results: Dict[str, Dict[str, List[Dict]]]
         # Normalize both to target
         if team1 != target:
             team_normalizations[team1] = target
-            print(f"Team normalized: '{team1}' -> '{target}'")
+            _log(f"Team normalized: '{team1}' -> '{target}'")
         if team2 != target:
             team_normalizations[team2] = target
-            print(f"Team normalized: '{team2}' -> '{target}'")
+            _log(f"Team normalized: '{team2}' -> '{target}'")
     
     # Pass 4: Add predefined team normalizations
-    for original, normalized in predefined_team_normalizations.items():
-        if original not in team_normalizations:
-            team_normalizations[original] = normalized
-            print(f"Team normalized (predefined): '{original}' -> '{normalized}'")
-    
+    if use_script_predefined:
+        for original, normalized in predefined_team_normalizations.items():
+            if original not in team_normalizations:
+                team_normalizations[original] = normalized
+                _log(f"Team normalized (predefined): '{original}' -> '{normalized}'")
+
+    if not apply_to_results:
+        return rider_normalizations, team_normalizations
+
     # Apply normalizations to results
     for category_results in all_results.values():
         for round_results in category_results.values():

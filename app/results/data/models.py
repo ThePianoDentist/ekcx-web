@@ -36,6 +36,7 @@ class ResultExport(Base):
         default="stored",
         server_default="stored",
     )
+    previous_csv_text: Mapped[Optional[str]] = mapped_column(String, nullable=True)
 
     event: Mapped["Event"] = relationship(back_populates="result_exports")
 

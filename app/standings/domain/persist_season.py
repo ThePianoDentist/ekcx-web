@@ -8,7 +8,12 @@ from typing import Dict
 from sqlalchemy.orm import Session
 
 from app.events.data.models import Event
-from app.participants.data.models import Club, ClubMembership, NameNormalisation, Participant
+from app.participants.data.models import Club, ClubMembership, Participant
+from app.participants.domain.name_normalisation import (
+    apply_stored_rules_to_results,
+    build_stored_maps,
+    load_rules,
+)
 from app.results.data.models import Result
 from app.standings.data.models import ClubCategoryPoints, ClubStanding, EventPoints, Standing
 from scripts.generate_standings_2025 import (
@@ -88,10 +93,25 @@ def persist_season_results(
     all_results: Dict[str, Dict[str, list]],
     events_by_round: Dict[int, Event],
     season_start: date,
+    *,
+    merge_similar: bool = False,
 ) -> tuple[int, int]:
     """Insert Result, Standing, and related rows. Caller clears stale rows first."""
     stamp_raw_names(all_results)
-    rider_normalizations, _team_normalizations = normalize_rider_and_team_names(all_results)
+    rules = load_rules(session)
+    if merge_similar:
+        stored_rider, stored_team = build_stored_maps(rules)
+        normalize_rider_and_team_names(
+            all_results,
+            merge_similar=True,
+            apply_to_results=True,
+            stored_rider_rules=stored_rider,
+            stored_team_rules=stored_team,
+            use_script_predefined=False,
+            log=False,
+        )
+    else:
+        apply_stored_rules_to_results(all_results, rules)
     category_standings = calculate_standings(all_results)
     team_standings = calculate_team_standings(all_results, category_standings)
 
@@ -128,34 +148,6 @@ def persist_season_results(
                         gender=result["gender"] or None,
                     )
                 )
-
-    seen_norms = set()
-    for (raw_last, raw_first), canonical in rider_normalizations.items():
-        if (raw_last, raw_first) == canonical:
-            continue
-        person = people.get(canonical)
-        if person is None:
-            continue
-        categories = {
-            category
-            for category, rounds in all_results.items()
-            for rows in rounds.values()
-            for result in rows
-            if result["raw_last_name"] == raw_last and result["raw_first_name"] == raw_first
-        }
-        for category in categories:
-            key = (raw_last, raw_first, category, person.id)
-            if key in seen_norms:
-                continue
-            seen_norms.add(key)
-            session.add(
-                NameNormalisation(
-                    participant_id=person.id,
-                    raw_last_name=raw_last,
-                    raw_first_name=raw_first,
-                    category=category,
-                )
-            )
 
     for category, riders in category_standings.items():
         for rider in riders:

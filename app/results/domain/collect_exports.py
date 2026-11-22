@@ -10,6 +10,7 @@ import pandas as pd
 from sqlalchemy.orm import Session
 
 from app.results.data import repository
+from app.results.data.repository import INGEST_STATUS_INGESTED
 from app.results.domain.category_from_filename import determine_category_from_filename
 from app.results.domain.race_dataframe import prepare_race_dataframe
 from scripts.generate_standings_2025 import (
@@ -54,11 +55,16 @@ def _rows_from_dataframe(df: pd.DataFrame, round_num: str) -> List[dict]:
 def collect_results_from_exports(
     session: Session,
     year: int,
+    *,
+    extra_export_ids: set[int] | None = None,
 ) -> Dict[str, Dict[str, List[dict]]]:
-    """Returns {category: {round: [result_dict, ...]}} from result_exports."""
+    """Returns {category: {round: [result_dict, ...]}} from ingested exports (+ optional extras)."""
     all_results: Dict[str, Dict[str, List[dict]]] = defaultdict(lambda: defaultdict(list))
+    extras = extra_export_ids or set()
 
     for export, event in repository.list_exports_for_year(session, year):
+        if export.ingest_status != INGEST_STATUS_INGESTED and export.id not in extras:
+            continue
         category = determine_category_from_filename(export.filename)
         if category == "skip":
             continue
