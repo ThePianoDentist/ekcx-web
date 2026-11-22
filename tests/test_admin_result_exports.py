@@ -15,6 +15,11 @@ from sqlalchemy import func, select
 from app.db import session as db_session
 from app.events.data.models import Event
 from app.results.data.models import ResultExport
+from app.users.data import repository
+from app.users.domain.auth import hash_password, normalize_email
+
+ADMIN_PASSWORD = "test-admin-password"
+ADMIN_EMAIL = "admin@ekcx.test"
 
 
 @pytest.fixture
@@ -25,6 +30,7 @@ def admin_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     results_root.mkdir()
     monkeypatch.setenv("EKCX_DB_PATH", str(db_path))
     monkeypatch.setenv("EKCX_RESULTS_ROOT", str(results_root))
+    monkeypatch.setenv("EKCX_SESSION_SECRET", "test-session-secret-for-pytest-only")
     db_session._session_factory = None
 
     root = Path(__file__).resolve().parents[1]
@@ -43,6 +49,11 @@ def admin_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
                 status="completed",
             )
         )
+        repository.create_user(
+            session,
+            normalize_email(ADMIN_EMAIL),
+            hash_password(ADMIN_PASSWORD),
+        )
         session.commit()
 
     import main
@@ -58,7 +69,18 @@ def client(admin_env):
     _results_root, _db_path = admin_env
     import main
 
-    return TestClient(main.app)
+    test_client = TestClient(main.app)
+    login = test_client.post(
+        "/admin/login",
+        data={
+            "email": ADMIN_EMAIL,
+            "password": ADMIN_PASSWORD,
+            "next": "/admin/results/",
+        },
+        follow_redirects=False,
+    )
+    assert login.status_code == 303
+    return test_client
 
 
 def test_upload_stores_disk_and_db(client: TestClient, admin_env):

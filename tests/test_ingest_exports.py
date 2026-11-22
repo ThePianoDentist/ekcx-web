@@ -18,6 +18,11 @@ from app.results.data.repository import INGEST_STATUS_INGESTED
 from app.results.domain.race_dataframe import prepare_race_dataframe
 from app.standings.data.models import Standing
 from app.standings.domain.refresh_from_exports import refresh_season_from_exports
+from app.users.data import repository
+from app.users.domain.auth import hash_password, normalize_email
+
+ADMIN_EMAIL = "admin@ekcx.test"
+ADMIN_PASSWORD = "test-admin-password"
 
 VALID_CSV = (
     "Pos,Last Name,First Name,Team,Category,Gender\n"
@@ -38,6 +43,7 @@ def ingest_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     results_root.mkdir()
     monkeypatch.setenv("EKCX_DB_PATH", str(db_path))
     monkeypatch.setenv("EKCX_RESULTS_ROOT", str(results_root))
+    monkeypatch.setenv("EKCX_SESSION_SECRET", "test-session-secret-for-pytest-only")
     db_session._session_factory = None
 
     root = _project_root()
@@ -57,6 +63,11 @@ def ingest_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
                     status="completed",
                 )
             )
+        repository.create_user(
+            session,
+            normalize_email(ADMIN_EMAIL),
+            hash_password(ADMIN_PASSWORD),
+        )
         session.commit()
 
     yield db_path, results_root
@@ -120,6 +131,16 @@ def test_upload_triggers_ingest(ingest_env):
 
     importlib.reload(main)
     client = TestClient(main.app)
+    login = client.post(
+        "/admin/login",
+        data={
+            "email": ADMIN_EMAIL,
+            "password": ADMIN_PASSWORD,
+            "next": "/admin/results/",
+        },
+        follow_redirects=False,
+    )
+    assert login.status_code == 303
 
     # Run:
     response = client.post(

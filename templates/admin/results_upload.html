@@ -9,7 +9,13 @@
     <div id="site_content">
       <div id="content" style="background-color:white; color:black; padding: 20px">
         <h1>Upload result file</h1>
-        <p><a href="/admin/results/?year={{ year }}">← Back to list</a></p>
+        <p>
+          <a href="/admin/results/?year={{ year }}">← Back to list</a>
+          ·
+          <form method="post" action="/admin/logout" style="display: inline; margin: 0;">
+            <button type="submit" style="background: none; border: none; color: #0369a1; cursor: pointer; padding: 0; font: inherit; text-decoration: underline;">Log out</button>
+          </form>
+        </p>
         {% if error %}
         <p style="color: #b91c1c;">{{ error }}</p>
         {% endif %}

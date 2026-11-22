@@ -82,4 +82,21 @@ uv run alembic upgrade head
 
 For 2026 standings, the default is still the static HTML. Add `?source=db` to read the same tables from SQLite, e.g. `/standings/2026/v40?source=db`.
 
-Admin result uploads (no login yet; issue #6): `/admin/results/` lists CrossMgr exports on disk and in `result_exports`; `/admin/results/upload` accepts `.csv`/`.xlsx` and refreshes parsed results and standings from all `result_exports` for that season. `make db-ingest` runs the same refresh without a new upload. Override the results directory with `EKCX_RESULTS_ROOT` (default: repo `results/`).
+## Admin
+
+Set a session signing secret (required to run the app):
+
+```bash
+export EKCX_SESSION_SECRET=$(python -c 'import secrets; print(secrets.token_hex(32))')
+```
+
+Create an admin (email is the username; password is printed once — send it to them out of band):
+
+```bash
+make db-upgrade
+uv run python -m app.users.interfaces.scripts.create_admin you@example.com
+```
+
+Log in at `/admin/login`. All `/admin/*` routes except login and logout require a session.
+
+Result uploads: `/admin/results/` lists CrossMgr exports on disk and in `result_exports`; `/admin/results/upload` accepts `.csv`/`.xlsx` and refreshes parsed results and standings from all `result_exports` for that season. `make db-ingest` runs the same refresh without a new upload. Override the results directory with `EKCX_RESULTS_ROOT` (default: repo `results/`).
