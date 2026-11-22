@@ -14,7 +14,8 @@ from collections import defaultdict
 from typing import Dict, List, Tuple, Optional, Any
 import difflib
 
-from app.results.domain.positions import classify_position
+from app.results.domain.category_from_filename import determine_category_from_filename
+from app.results.domain.race_dataframe import prepare_race_dataframe
 
 # Points system for Seniors/U23 and Veteran Open 40/50
 POINTS = {
@@ -150,76 +151,10 @@ def read_race_result(file_path: Path) -> pd.DataFrame:
                 print(f"Warning: Missing columns in {file_path}: {missing_cols}")
                 return pd.DataFrame()
         
-        df = df[
-            df['Pos'].apply(
-                lambda value: pd.notna(value)
-                and classify_position(value) in ("finished", "dnf")
-            )
-        ]
-        if df.empty:
-            return pd.DataFrame()
-
-        # A placed row with no name (a blank chip in the export) is not a rider.
-        def _has_name(value) -> bool:
-            if pd.isna(value):
-                return False
-            text = str(value).strip()
-            return bool(text) and text.lower() != 'nan'
-
-        # Blank chips can hold a position in the sheet but must not score.
-        scored = df['Last Name'].apply(_has_name) | df['First Name'].apply(_has_name)
-        if not scored.any():
-            return pd.DataFrame()
-        df = df.loc[scored].copy()
-        df['_dnf'] = df['Pos'].apply(lambda value: classify_position(value) == "dnf")
-        df.loc[df['_dnf'], 'Pos'] = pd.NA
-        finish_mask = ~df['_dnf']
-        if finish_mask.any():
-            df.loc[finish_mask, 'Pos'] = pd.to_numeric(
-                df.loc[finish_mask, 'Pos'],
-                errors='coerce',
-            )
-        df.drop(columns=['_dnf'], inplace=True)
-        
-        # Clean up the data
-        df['Last Name'] = df['Last Name'].fillna('').astype(str)
-        df['First Name'] = df['First Name'].fillna('').astype(str)
-        df['Team'] = df['Team'].fillna('').astype(str)
-        df['Category'] = df['Category'].fillna('').astype(str)
-        df['Gender'] = df['Gender'].fillna('').astype(str)
-        
-        return df
+        return prepare_race_dataframe(df)
     except Exception as e:
         print(f"Error reading {file_path}: {e}")
         return pd.DataFrame()
-
-
-def determine_category_from_filename(filename: str) -> str:
-    """Determine the category from the filename. Note: Round number is determined by directory, not filename."""
-    filename_lower = filename.lower()
-
-    # Try CX is a participation race and does not score league points.
-    if 'try cx' in filename_lower or 'trycx' in filename_lower:
-        return 'skip'
-
-    # Map filenames to categories (ignoring race numbers in the filename — round is the directory).
-    # "Women" does not contain "womens", so match the shorter form.
-    if 'elite female' in filename_lower or 'women' in filename_lower:
-        return 'womens'
-    elif 'under 12' in filename_lower or 'u12' in filename_lower:
-        return 'u12'
-    elif 'under 16' in filename_lower or 'u16' in filename_lower:
-        return 'youth'
-    elif 'masters 50' in filename_lower or 'masters50' in filename_lower or 'v50' in filename_lower or 'm50' in filename_lower:
-        return 'v50'
-    # Junior/senior/M40 share one race from 2026. Match M40 before "senior"
-    # so that combined export stays on the joined open table.
-    elif 'masters 40' in filename_lower or 'masters40' in filename_lower or 'v40' in filename_lower or 'm40' in filename_lower:
-        return 'v40'
-    elif 'elite open' in filename_lower or 'senior open' in filename_lower or 'senior' in filename_lower:
-        return 'mens'
-    else:
-        return 'unknown'
 
 
 def collect_results(

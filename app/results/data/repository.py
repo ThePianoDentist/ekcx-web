@@ -10,6 +10,7 @@ from app.events.data.models import Event
 from app.results.data.models import ResultExport
 
 INGEST_STATUS_STORED = "stored"
+INGEST_STATUS_INGESTED = "ingested"
 
 
 def find_event(session: Session, year: int, round_number: int) -> Optional[Event]:
@@ -61,3 +62,9 @@ def upsert_export(
     session.add(row)
     session.flush()
     return row
+
+
+def mark_exports_ingested(session: Session, year: int) -> None:
+    for export, _event in list_exports_for_year(session, year):
+        export.ingest_status = INGEST_STATUS_INGESTED
+    session.flush()

@@ -1,4 +1,4 @@
-.PHONY: setup run db-upgrade db-backfill test
+.PHONY: setup run db-upgrade db-backfill db-ingest test
 
 setup:
 	uv sync --extra dev
@@ -11,6 +11,9 @@ db-upgrade:
 
 db-backfill:
 	uv run python scripts/backfill_season.py
+
+db-ingest:
+	uv run python scripts/ingest_season_from_db.py
 
 test:
 	uv run pytest

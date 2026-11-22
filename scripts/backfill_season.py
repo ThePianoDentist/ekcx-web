@@ -22,18 +22,12 @@ from sqlalchemy.orm import Session
 
 from app.db.session import build_sqlite_url, create_session_factory
 from app.events.data.models import Event
-from app.participants.data.models import Club, ClubMembership, NameNormalisation, Participant
-from app.results.data.models import Result, ResultExport
 from app.results.domain.exports import store_export_from_path
 from app.results.domain.raw_export import round_export_paths
-from app.standings.data.models import ClubCategoryPoints, ClubStanding, EventPoints, Standing
+from app.standings.data.models import ClubStanding, Standing
 from app.standings.domain.html_standings import parse_rider_standings, parse_team_standings
-from scripts.generate_standings_2025 import (
-    calculate_standings,
-    calculate_team_standings,
-    collect_results,
-    normalize_rider_and_team_names,
-)
+from app.standings.domain.persist_season import persist_season_results
+from scripts.generate_standings_2025 import collect_results
 
 YEAR = 2026
 # Farthingloe is held back for the first database ingest test.
@@ -112,6 +106,10 @@ def upgrade_schema(root: Path, db_path: Path) -> None:
 
 def clear_league(session: Session) -> None:
     """Drop league rows so a second run replaces this season. Users stay."""
+    from app.participants.data.models import Club, ClubMembership, NameNormalisation, Participant
+    from app.results.data.models import Result, ResultExport
+    from app.standings.data.models import ClubCategoryPoints, ClubStanding, EventPoints, Standing
+
     for model in (
         EventPoints,
         ClubCategoryPoints,
@@ -126,69 +124,6 @@ def clear_league(session: Session) -> None:
         Club,
     ):
         session.execute(delete(model))
-
-
-def _stamp_raw_names(all_results: dict) -> None:
-    for rounds in all_results.values():
-        for rows in rounds.values():
-            for result in rows:
-                result["raw_last_name"] = result["last_name"]
-                result["raw_first_name"] = result["first_name"]
-                result["raw_team"] = result["team"]
-
-
-def _club(session: Session, clubs: dict, name: str) -> Club | None:
-    if not name:
-        return None
-    club = clubs.get(name)
-    if club is None:
-        club = Club(name=name)
-        session.add(club)
-        session.flush()
-        clubs[name] = club
-    return club
-
-
-def _participant(
-    session: Session,
-    people: dict,
-    clubs: dict,
-    last_name: str,
-    first_name: str,
-    team: str,
-) -> Participant:
-    key = (last_name, first_name)
-    person = people.get(key)
-    if person is None:
-        club = _club(session, clubs, team)
-        person = Participant(
-            last_name=last_name,
-            first_name=first_name,
-            club_id=club.id if club else None,
-        )
-        session.add(person)
-        session.flush()
-        if club is not None:
-            session.add(
-                ClubMembership(
-                    participant_id=person.id,
-                    club_id=club.id,
-                    joined_on=SEASON_START,
-                )
-            )
-        people[key] = person
-    elif person.club_id is None and team:
-        club = _club(session, clubs, team)
-        person.club_id = club.id if club else None
-        if club is not None:
-            session.add(
-                ClubMembership(
-                    participant_id=person.id,
-                    club_id=club.id,
-                    joined_on=SEASON_START,
-                )
-            )
-    return person
 
 
 def load_raw_exports(
@@ -210,13 +145,9 @@ def load_raw_exports(
 
 def load_season(session: Session, results_dir: Path) -> None:
     all_results = collect_results(results_dir, include_rounds=INCLUDE_ROUNDS)
-    _stamp_raw_names(all_results)
-    rider_normalizations, _team_normalizations = normalize_rider_and_team_names(all_results)
-    category_standings = calculate_standings(all_results)
-    team_standings = calculate_team_standings(all_results, category_standings)
 
     clear_league(session)
-    events = {}
+    events: dict[int, Event] = {}
     for spec in EVENTS:
         event = Event(year=YEAR, **spec)
         session.add(event)
@@ -226,111 +157,20 @@ def load_season(session: Session, results_dir: Path) -> None:
     export_count = load_raw_exports(session, events, results_dir)
     print(f"Stored {export_count} raw exports (licence columns stripped) for rounds {sorted(INCLUDE_ROUNDS)}")
 
-    clubs: dict = {}
-    people: dict = {}
+    riders, standings_rows = persist_season_results(
+        session,
+        YEAR,
+        all_results,
+        events,
+        SEASON_START,
+    )
+    from app.results.data import repository
 
-    for category, rounds in all_results.items():
-        for round_num, rows in rounds.items():
-            event = events[int(round_num)]
-            for result in rows:
-                person = _participant(
-                    session,
-                    people,
-                    clubs,
-                    result["last_name"],
-                    result["first_name"],
-                    result["team"],
-                )
-                club = _club(session, clubs, result["team"])
-                session.add(
-                    Result(
-                        event_id=event.id,
-                        category=category,
-                        participant_id=person.id,
-                        club_id=club.id if club else None,
-                        raw_last_name=result["raw_last_name"],
-                        raw_first_name=result["raw_first_name"],
-                        raw_club=result["raw_team"] or None,
-                        position=result["position"],
-                        dnf=bool(result["dnf"]),
-                        points=result["points"],
-                        category_detail=result["category"] or None,
-                        gender=result["gender"] or None,
-                    )
-                )
-
-    seen_norms = set()
-    for (raw_last, raw_first), canonical in rider_normalizations.items():
-        if (raw_last, raw_first) == canonical:
-            continue
-        person = people.get(canonical)
-        if person is None:
-            continue
-        categories = {
-            category
-            for category, rounds in all_results.items()
-            for rows in rounds.values()
-            for result in rows
-            if result["raw_last_name"] == raw_last and result["raw_first_name"] == raw_first
-        }
-        for category in categories:
-            key = (raw_last, raw_first, category, person.id)
-            if key in seen_norms:
-                continue
-            seen_norms.add(key)
-            session.add(
-                NameNormalisation(
-                    participant_id=person.id,
-                    raw_last_name=raw_last,
-                    raw_first_name=raw_first,
-                    category=category,
-                )
-            )
-
-    for category, riders in category_standings.items():
-        for rider in riders:
-            person = people[(rider["last_name"], rider["first_name"])]
-            club = _club(session, clubs, rider["team"])
-            standing = Standing(
-                year=YEAR,
-                category=category,
-                participant_id=person.id,
-                club_id=club.id if club else None,
-                total_points=rider["total_points"],
-                points_excl_lowest=rider["points_excl_lowest"],
-            )
-            session.add(standing)
-            session.flush()
-            for round_num, points in rider["points_by_round"].items():
-                session.add(
-                    EventPoints(
-                        standing_id=standing.id,
-                        event_id=events[int(round_num)].id,
-                        points=points,
-                    )
-                )
-
-    for team in team_standings:
-        club = clubs[team["team"]]
-        club_standing = ClubStanding(year=YEAR, club_id=club.id, total_points=team["total"])
-        session.add(club_standing)
-        session.flush()
-        for category in ("womens", "mens", "u12", "youth", "v40", "v50"):
-            points = team[category]
-            if not points:
-                continue
-            session.add(
-                ClubCategoryPoints(
-                    club_standing_id=club_standing.id,
-                    category=category,
-                    points=points,
-                )
-            )
-
+    repository.mark_exports_ingested(session, YEAR)
     session.commit()
     print(
         f"Loaded {YEAR} rounds {sorted(INCLUDE_ROUNDS)}: "
-        f"{len(people)} riders, {sum(len(v) for v in category_standings.values())} standings rows"
+        f"{riders} riders, {standings_rows} standings rows"
     )
 
 

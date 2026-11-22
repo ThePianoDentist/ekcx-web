@@ -15,8 +15,8 @@
         {% if db_error %}
         <p style="color: #b91c1c;">{{ db_error }}</p>
         {% endif %}
-        {% if msg == "uploaded" %}
-        <p style="color: #15803d;">Upload saved to disk and database.</p>
+        {% if msg == "ingested" %}
+        <p style="color: #15803d;">Upload saved and standings refreshed from database exports.</p>
         {% endif %}
         <form method="get" action="/admin/results/" style="margin-bottom: 1em;">
           <label>Season year:

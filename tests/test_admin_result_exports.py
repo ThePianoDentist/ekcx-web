@@ -64,21 +64,24 @@ def client(admin_env):
 def test_upload_stores_disk_and_db(client: TestClient, admin_env):
     # Setup:
     results_root, _ = admin_env
-    csv_body = "Pos,License,Last Name\n1,123456,HURST\n"
+    csv_body = (
+        "Pos,License,Last Name,First Name,Team,Category,Gender\n"
+        "1,123456,HURST,Ann,VC Deal,Ma40,F\n"
+    )
     # Run:
     response = client.post(
         "/admin/results/upload",
         data={"year": "2026", "round_number": "1"},
-        files={"file": ("mens.csv", csv_body.encode(), "text/csv")},
+        files={"file": ("senior_open.csv", csv_body.encode(), "text/csv")},
         follow_redirects=False,
     )
     # Check:
     assert response.status_code == 303
-    assert (results_root / "2026" / "1" / "mens.csv").is_file()
+    assert (results_root / "2026" / "1" / "senior_open.csv").is_file()
     factory = db_session.create_session_factory()
     with factory() as session:
         export = session.scalar(
-            select(ResultExport).where(ResultExport.filename == "mens.csv")
+            select(ResultExport).where(ResultExport.filename == "senior_open.csv")
         )
         assert export is not None
         assert export.uploaded_at is not None
@@ -86,12 +89,12 @@ def test_upload_stores_disk_and_db(client: TestClient, admin_env):
         assert "License" not in df.columns
     list_resp = client.get("/admin/results/?year=2026")
     assert list_resp.status_code == 200
-    assert "mens.csv" in list_resp.text
+    assert "senior_open.csv" in list_resp.text
 
 
 def test_upload_without_event_returns_error(client: TestClient, admin_env):
     # Setup:
-    csv_body = "Pos,Last Name\n1,HURST\n"
+    csv_body = "Pos,Last Name,First Name,Team,Category,Gender\n1,HURST,Ann,VC Deal,Ma40,F\n"
     # Run:
     response = client.post(
         "/admin/results/upload",
@@ -105,16 +108,16 @@ def test_upload_without_event_returns_error(client: TestClient, admin_env):
 
 def test_replace_upload_updates_csv_and_timestamp(client: TestClient, admin_env):
     # Setup:
-    csv_v1 = "Pos,Last Name\n1,ONE\n"
-    csv_v2 = "Pos,Last Name\n1,TWO\n"
+    csv_v1 = "Pos,Last Name,First Name,Team,Category,Gender\n1,ONE,Al,RC,Ma40,M\n"
+    csv_v2 = "Pos,Last Name,First Name,Team,Category,Gender\n1,TWO,Bo,RC,Ma40,M\n"
     client.post(
         "/admin/results/upload",
         data={"year": "2026", "round_number": "1"},
-        files={"file": ("race.csv", csv_v1.encode(), "text/csv")},
+        files={"file": ("senior_open.csv", csv_v1.encode(), "text/csv")},
     )
     factory = db_session.create_session_factory()
     with factory() as session:
-        first = session.scalar(select(ResultExport).where(ResultExport.filename == "race.csv"))
+        first = session.scalar(select(ResultExport).where(ResultExport.filename == "senior_open.csv"))
         assert first is not None
         first_time = first.uploaded_at
     sleep(0.02)
@@ -122,11 +125,11 @@ def test_replace_upload_updates_csv_and_timestamp(client: TestClient, admin_env)
     client.post(
         "/admin/results/upload",
         data={"year": "2026", "round_number": "1"},
-        files={"file": ("race.csv", csv_v2.encode(), "text/csv")},
+        files={"file": ("senior_open.csv", csv_v2.encode(), "text/csv")},
     )
     # Check:
     with factory() as session:
-        second = session.scalar(select(ResultExport).where(ResultExport.filename == "race.csv"))
+        second = session.scalar(select(ResultExport).where(ResultExport.filename == "senior_open.csv"))
         assert second is not None
         assert "TWO" in second.csv_text
         assert second.uploaded_at is not None
@@ -134,6 +137,6 @@ def test_replace_upload_updates_csv_and_timestamp(client: TestClient, admin_env)
         n = session.scalar(
             select(func.count())
             .select_from(ResultExport)
-            .where(ResultExport.filename == "race.csv")
+            .where(ResultExport.filename == "senior_open.csv")
         )
         assert n == 1
