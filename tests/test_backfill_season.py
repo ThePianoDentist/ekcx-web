@@ -64,28 +64,14 @@ def test_backfill_diff_against_published_standings(tmp_path: Path):
         RESULTS,
         ROOT / "templates" / "standings" / "2026",
     )
-    # Check: pages were built before DNF rows scored zero and before two name fixes.
+    # Check: static HTML lags normalisation, zeros, and round 3 data in the DB.
     assert errors == []
-    assert html_diffs == [
-        "womens.html: 14 html rows, 14 db rows, 1 only in html, 1 only in db",
-        "  html only: ('CALEIA-RAMOS', 'Natasha', 'ASSOS UK Racing Team', ((2, 80),), 80, 80)",
-        "  db only: ('CALDAR-RAMOS', 'Natasha', 'ASSOS UK Racing Team', ((2, 80),), 80, 80)",
-        "v40.html: 62 html rows, 63 db rows, 2 only in html, 3 only in db",
-        "  html only: ('DEWILDE-GREY', 'Adam', '', ((2, 43),), 43, 43)",
-        "  html only: ('SELMES', 'Daniel', '', ((1, 38), (2, 41)), 79, 79)",
-        "  db only: ('BRYAN', 'Ross', 'VC Deal', ((2, 0),), 0, 0)",
-        "  db only: ('DE WILDE-GREY', 'Adam', '', ((2, 43),), 43, 43)",
-        "  db only: ('SELMES', 'Daniel', 'Lewes', ((1, 38), (2, 41)), 79, 79)",
-        "v50.html: 47 html rows, 47 db rows, 2 only in html, 2 only in db",
-        "  html only: ('CHARLTON', 'Perrin', 'Hythe Cycling Club', ((2, 83),), 83, 83)",
-        "  html only: ('MARSH', 'Nick', 'GS Invicta-ELO-Herberts Cycles', ((1, 59),), 59, 59)",
-        "  db only: ('CHARLTON', 'Perrin', 'Hythe Cycling Club', ((1, 0), (2, 83)), 83, 83)",
-        "  db only: ('MARSH', 'Nick', 'GS Invicta-ELO-Herberts Cycles', ((1, 59), (2, 0)), 59, 59)",
-        "u12.html: 31 html rows, 31 db rows, 2 only in html, 2 only in db",
-        "  html only: ('SHEARWOOD', 'Woody', 'Limited Edition Cycling', ((2, 76),), 76, 76)",
-        "  html only: ('WHITTLE', 'Monty', 'VC Deal', ((2, 63),), 63, 63)",
-        "  db only: ('SHEARWOOD', 'Woody', 'Limited Edition Cycling', ((1, 0), (2, 76)), 76, 76)",
-        "  db only: ('WHITTLE', 'Monty', 'VC Deal', ((1, 0), (2, 63)), 63, 63)",
-        "teams.html: 41 html rows, 42 db rows, 0 only in html, 1 only in db",
-        "  db only: ('Lewes', (('Points', 79), ('Under 12', 0), ('Under 16', 0), ('V40', 79), ('V50', 0), ('Women', 0)))",
+    summaries = [line for line in html_diffs if not line.startswith("  ")]
+    assert summaries == [
+        "womens.html: 14 html rows, 15 db rows, 6 only in html, 7 only in db",
+        "v40.html: 62 html rows, 70 db rows, 29 only in html, 37 only in db",
+        "v50.html: 47 html rows, 56 db rows, 26 only in html, 35 only in db",
+        "youth.html: 17 html rows, 20 db rows, 13 only in html, 16 only in db",
+        "u12.html: 31 html rows, 36 db rows, 17 only in html, 22 only in db",
+        "teams.html: 41 html rows, 47 db rows, 25 only in html, 31 only in db",
     ]

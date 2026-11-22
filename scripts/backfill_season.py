@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Load the current season into SQLite and check it against the standings HTML.
 
-2026 rounds 1 and 2 only. Round 3 stays on disk so it can be ingested later.
+2026 rounds 1–3 from disk; round 4+ left for admin upload tests.
 Older seasons stay on the static HTML pages. Re-running replaces this season.
 """
 
@@ -35,8 +35,7 @@ from app.standings.domain.html_standings import parse_rider_standings, parse_tea
 from app.standings.domain.persist_season import persist_season_results
 
 YEAR = 2026
-# Farthingloe is held back for the first database ingest test.
-INCLUDE_ROUNDS = {1, 2}
+INCLUDE_ROUNDS = {1, 2, 3}
 SEASON_START = date(2026, 9, 13)
 
 # Same metadata the public event pages use. Results are loaded only for INCLUDE_ROUNDS.
@@ -63,7 +62,7 @@ EVENTS = [
         "event_date": "November 15, 2026",
         "location": "Farthingloe",
         "british_cycling_url": "https://www.britishcycling.org.uk/events/details/341793/East-Kent-Cyclo-Cross-League-Round-3-FarthingloeCross",
-        "status": "upcoming",
+        "status": "completed",
     },
     {
         "round_number": 4,
@@ -307,11 +306,6 @@ def run_backfill(
     factory = create_session_factory(db_path)
     with factory() as session:
         load_season(session, results_dir)
-        round_3 = session.scalar(select(Event).where(Event.year == YEAR, Event.round_number == 3))
-        result_count = len(round_3.results) if round_3 is not None else 0
-        print(f"Round 3 status={round_3.status if round_3 else 'missing'} results={result_count}")
-        if result_count:
-            return ([f"Round 3 has {result_count} results; it should be empty"], [])
         return ([], compare_to_html(session, standings_dir))
 
 
