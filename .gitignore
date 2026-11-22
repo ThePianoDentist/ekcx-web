@@ -123,6 +123,7 @@ celerybeat.pid
 # Environments
 .env
 local/shell.env
+local/ekcx.sqlite3*
 .venv
 env/
 venv/

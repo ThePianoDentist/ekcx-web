@@ -50,7 +50,12 @@ path = pathlib.Path(sys.argv[1])
 key = sys.argv[2]
 value = sys.argv[3]
 header = sys.argv[4]
-line = f"{key}={value}"
+def _dotenv_value(raw: str) -> str:
+    escaped = raw.replace("\\", "\\\\").replace('"', '\\"')
+    return f'"{escaped}"'
+
+
+line = f"{key}={_dotenv_value(value)}"
 
 lines: list[str] = []
 if path.exists():
