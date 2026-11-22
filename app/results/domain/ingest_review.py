@@ -45,6 +45,7 @@ def apply_maps_to_csv(
     df = pd.read_csv(StringIO(csv_text))
     if "Last Name" not in df.columns:
         return csv_text
+    changed = False
     for idx, row in df.iterrows():
         last = normalize_name(str(row.get("Last Name", "")))
         first = normalize_first_name(str(row.get("First Name", "")))
@@ -59,14 +60,19 @@ def apply_maps_to_csv(
                     break
         if rider_key in rider_map:
             canon = resolve_canonical_name(rider_key, rider_map)
-            df.at[idx, "Last Name"] = canon[0]
-            df.at[idx, "First Name"] = canon[1]
+            if df.at[idx, "Last Name"] != canon[0] or df.at[idx, "First Name"] != canon[1]:
+                df.at[idx, "Last Name"] = canon[0]
+                df.at[idx, "First Name"] = canon[1]
+                changed = True
         if "Team" in df.columns and pd.notna(row.get("Team")):
             team = str(row["Team"]).strip()
             if team:
                 new_team = resolve_canonical_name(team, team_map)
                 if new_team != team:
                     df.at[idx, "Team"] = new_team
+                    changed = True
+    if not changed:
+        return csv_text
     buf = StringIO()
     df.to_csv(buf, index=False)
     return buf.getvalue()

@@ -13,7 +13,8 @@ from sqlalchemy import func, select
 
 from app.db import session as db_session
 from app.events.data.models import Event
-from app.results.data.models import Result, ResultExport
+from app.participants.data.models import RiderNameRule
+from app.results.data.models import Result, ResultExport, ResultExportVersion
 from app.results.data.repository import (
     INGEST_STATUS_INGESTED,
     INGEST_STATUS_PENDING_REVIEW,
@@ -217,3 +218,79 @@ def test_confirm_ingest_builds_standings(ingest_env):
         )
         assert standing is not None
         assert standing.total_points > 0
+        versions = session.scalars(
+            select(ResultExportVersion).where(ResultExportVersion.export_id == int(export_id))
+        ).all()
+        assert [row.version for row in versions] == [1]
+
+
+def test_confirm_normalisation_saves_latest_csv_version(ingest_env):
+    # Setup:
+    _db_path, _results_root = ingest_env
+    import main
+
+    importlib.reload(main)
+    client = TestClient(main.app)
+    login = client.post(
+        "/admin/login",
+        data={
+            "email": ADMIN_EMAIL,
+            "password": ADMIN_PASSWORD,
+            "next": "/admin/results/",
+        },
+        follow_redirects=False,
+    )
+    assert login.status_code == 303
+    upload = client.post(
+        "/admin/results/upload",
+        data={"year": "2026", "round_number": "1"},
+        files={"file": ("senior_open.csv", VALID_CSV.encode(), "text/csv")},
+        follow_redirects=False,
+    )
+    assert upload.status_code == 303
+    location = upload.headers["location"]
+    export_id = int(location.split("/exports/")[1].split("/")[0])
+    factory = db_session.create_session_factory()
+    with factory() as session:
+        session.add(
+            RiderNameRule(
+                raw_last_name="HURST",
+                raw_first_name="Ann",
+                canonical_last_name="HURST",
+                canonical_first_name="Anne",
+                category="",
+                source="test",
+            )
+        )
+        session.commit()
+
+    # Run:
+    confirm = client.post(
+        f"/admin/results/exports/{export_id}/confirm",
+        data={"year": "2026", "accept": "stored-rider:HURST:Ann"},
+        follow_redirects=False,
+    )
+
+    # Check:
+    assert confirm.status_code == 303
+    assert "error=" not in confirm.headers["location"]
+    with factory() as session:
+        versions = session.scalars(
+            select(ResultExportVersion)
+            .where(ResultExportVersion.export_id == export_id)
+            .order_by(ResultExportVersion.version)
+        ).all()
+        assert [row.version for row in versions] == [1, 2]
+        assert ",Ann," in versions[0].csv_text
+        assert ",Anne," in versions[1].csv_text
+        export = session.get(ResultExport, export_id)
+        assert export is not None
+        assert ",Anne," in export.csv_text
+    original = client.get(f"/admin/results/exports/{export_id}/download?version=1")
+    latest = client.get(f"/admin/results/exports/{export_id}/download?version=2")
+    assert ",Ann," in original.text
+    assert ",Anne," not in original.text
+    assert ",Anne," in latest.text
+    listing = client.get("/admin/results/?year=2026")
+    assert f"/exports/{export_id}/download?version=1" in listing.text
+    assert f"/exports/{export_id}/download?version=2" in listing.text

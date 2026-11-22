@@ -21,7 +21,14 @@ from app.results.data import repository
 from app.results.data.models import ResultExport
 from app.results.data.repository import INGEST_STATUS_INGESTED
 from app.results.domain.collect_exports import IngestError, collect_results_from_exports
-from app.results.domain.exports import ExportError, list_exports_for_season, store_upload
+from app.results.domain.exports import (
+    ExportError,
+    duplicate_race_message,
+    list_exports_for_season,
+    next_upload_round,
+    store_upload,
+    versioned_csv_filename,
+)
 from app.results.domain.ingest_review import (
     ConfirmValidationError,
     apply_maps_to_csv,
@@ -67,18 +74,29 @@ async def results_index(request: Request, year: int = 2026):
 
 
 @router.get("/exports/{export_id}/download")
-async def download_export(export_id: int):
+async def download_export(export_id: int, version: int | None = None):
     factory = get_session_factory()
     session = factory()
     try:
         export = repository.get_export(session, export_id)
         if export is None:
             return Response(status_code=404, content="Not found")
+        if version is None:
+            latest = repository.latest_csv_version(session, export.id)
+            csv_text = latest.csv_text if latest is not None else export.csv_text
+            version_number = latest.version if latest is not None else 1
+        else:
+            stored = repository.get_csv_version(session, export.id, version)
+            if stored is None:
+                return Response(status_code=404, content="Not found")
+            csv_text = stored.csv_text
+            version_number = stored.version
+        download_name = versioned_csv_filename(export.filename, version_number)
         headers = {
-            "Content-Disposition": f'attachment; filename="{export.filename}"',
+            "Content-Disposition": f'attachment; filename="{download_name}"',
         }
         return Response(
-            content=export.csv_text,
+            content=csv_text,
             media_type="text/csv; charset=utf-8",
             headers=headers,
         )
@@ -195,7 +213,7 @@ async def export_confirm(
             tmp.unlink(missing_ok=True)
             if not csv_text:
                 raise ExportError("File is empty or not a valid CrossMgr export after sanitizing")
-            export.csv_text = csv_text
+            repository.record_csv_version(session, export, csv_text)
 
         if export.previous_csv_text and confirm_overwrite != "yes":
             return RedirectResponse(
@@ -216,7 +234,11 @@ async def export_confirm(
             accepted_ids,
             rules,
         )
-        export.csv_text = apply_maps_to_csv(export.csv_text, rider_map, team_map)
+        repository.record_csv_version(
+            session,
+            export,
+            apply_maps_to_csv(export.csv_text, rider_map, team_map),
+        )
         upsert_accepted_suggestions(
             session, review.suggestions, accepted_ids, source="admin"
         )
@@ -262,18 +284,23 @@ async def export_confirm(
 async def upload_form(
     request: Request,
     year: int = 2026,
-    round_number: int = 1,
+    round_number: int | None = None,
     error: str | None = None,
     warn_overwrite: int | None = None,
 ):
     overwrite_export = None
     factory = get_session_factory()
-    if warn_overwrite is not None:
-        session = factory()
-        try:
+    session = factory()
+    try:
+        if round_number is None:
+            try:
+                round_number = next_upload_round(session, year)
+            except OperationalError:
+                round_number = 1
+        if warn_overwrite is not None:
             overwrite_export = repository.get_export(session, warn_overwrite)
-        finally:
-            session.close()
+    finally:
+        session.close()
     return templates.TemplateResponse(
         request=request,
         name="admin/results_upload.html",
@@ -344,6 +371,10 @@ async def upload_submit(
                 },
                 status_code=400,
             )
+
+        clash = duplicate_race_message(session, event.id, name, round_number)
+        if clash:
+            raise ExportError(clash)
 
         export = store_upload(session, year, round_number, file.filename, data)
         repository.mark_export_pending_review(session, export)

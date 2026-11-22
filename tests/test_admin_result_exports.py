@@ -14,7 +14,7 @@ from sqlalchemy import func, select
 
 from app.db import session as db_session
 from app.events.data.models import Event
-from app.results.data.models import ResultExport
+from app.results.data.models import ResultExport, ResultExportVersion
 from app.users.data import repository
 from app.users.domain.auth import hash_password, normalize_email
 
@@ -112,6 +112,15 @@ def test_upload_stores_disk_and_db(client: TestClient, admin_env):
     list_resp = client.get("/admin/results/?year=2026")
     assert list_resp.status_code == 200
     assert "senior_open.csv" in list_resp.text
+    assert 'href="/standings/2026/mens"' in list_resp.text
+    assert "On disk" not in list_resp.text
+    assert "In DB" not in list_resp.text
+    assert 'href="/"' in list_resp.text
+    assert list_resp.text.count("download?version=1") == 2
+    original = client.get(f"/admin/results/exports/{export.id}/download?version=1")
+    assert original.status_code == 200
+    assert 'filename="senior_open.v1.csv"' in original.headers["content-disposition"]
+    assert "HURST" in original.text
 
 
 def test_upload_without_event_returns_error(client: TestClient, admin_env):
@@ -162,3 +171,79 @@ def test_replace_upload_updates_csv_and_timestamp(client: TestClient, admin_env)
             .where(ResultExport.filename == "senior_open.csv")
         )
         assert n == 1
+        versions = session.scalars(
+            select(ResultExportVersion)
+            .where(ResultExportVersion.export_id == second.id)
+            .order_by(ResultExportVersion.version)
+        ).all()
+        assert [row.version for row in versions] == [1, 2]
+        assert "ONE" in versions[0].csv_text
+        assert "TWO" in versions[1].csv_text
+        export_id = second.id
+    list_resp = client.get("/admin/results/?year=2026")
+    assert "download?version=1" in list_resp.text
+    assert "download?version=2" in list_resp.text
+    original = client.get(f"/admin/results/exports/{export_id}/download?version=1")
+    latest = client.get(f"/admin/results/exports/{export_id}/download?version=2")
+    assert "ONE" in original.text
+    assert "TWO" in latest.text
+    assert 'filename="senior_open.v1.csv"' in original.headers["content-disposition"]
+    assert 'filename="senior_open.v2.csv"' in latest.headers["content-disposition"]
+
+
+_CSV = "Pos,Last Name,First Name,Team,Category,Gender\n1,HURST,Ann,VC Deal,Ma40,F\n"
+
+
+def test_upload_form_defaults_to_the_round_after_the_latest(client: TestClient):
+    # Setup:
+    factory = db_session.create_session_factory()
+    with factory() as session:
+        session.add(Event(year=2026, round_number=2, name="Round 2", status="completed"))
+        session.add(Event(year=2026, round_number=3, name="Round 3", status="completed"))
+        session.commit()
+    # Run:
+    empty = client.get("/admin/results/upload?year=2026")
+    client.post(
+        "/admin/results/upload",
+        data={"year": "2026", "round_number": "2"},
+        files={"file": ("round2_womens.csv", _CSV.encode(), "text/csv")},
+        follow_redirects=False,
+    )
+    after_one_category = client.get("/admin/results/upload?year=2026")
+    explicit = client.get("/admin/results/upload?year=2026&round_number=1")
+    # Check:
+    assert 'name="round_number" value="1"' in empty.text
+    assert 'name="round_number" value="3"' in after_one_category.text
+    assert "btn-upload" in after_one_category.text
+    assert 'name="round_number" value="1"' in explicit.text
+
+
+def test_upload_rejects_second_file_for_the_same_race(client: TestClient):
+    # Setup:
+    first = client.post(
+        "/admin/results/upload",
+        data={"year": "2026", "round_number": "1"},
+        files={"file": ("sandwich_women.csv", _CSV.encode(), "text/csv")},
+        follow_redirects=False,
+    )
+    assert first.status_code == 303
+    # Run:
+    duplicate = client.post(
+        "/admin/results/upload",
+        data={"year": "2026", "round_number": "1"},
+        files={"file": ("sandwich_elite_women.csv", _CSV.encode(), "text/csv")},
+    )
+    other_race = client.post(
+        "/admin/results/upload",
+        data={"year": "2026", "round_number": "1"},
+        files={"file": ("sandwich_v40.csv", _CSV.encode(), "text/csv")},
+        follow_redirects=False,
+    )
+    # Check:
+    assert duplicate.status_code == 400
+    assert "already has a Women file (sandwich_women.csv)" in duplicate.text
+    assert other_race.status_code == 303
+    factory = db_session.create_session_factory()
+    with factory() as session:
+        names = set(session.scalars(select(ResultExport.filename)).all())
+    assert names == {"sandwich_women.csv", "sandwich_v40.csv"}

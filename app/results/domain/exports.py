@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from app.results.data import repository
 from app.results.data.models import ResultExport
 from app.results.data.paths import get_results_root
+from app.results.domain.category_from_filename import determine_category_from_filename
 from app.results.domain.raw_export import file_to_sanitized_csv, round_export_paths
 
 ALLOWED_SUFFIXES = {".csv", ".xlsx"}
@@ -31,6 +32,66 @@ def safe_filename(name: str) -> str:
     return base
 
 
+def standings_category_for_filename(filename: str) -> Optional[str]:
+    """League standings page for this export, when the filename names a category."""
+    category = determine_category_from_filename(filename)
+    if category in {"skip", "unknown"}:
+        return None
+    return category
+
+
+_RACE_LABELS = {
+    "womens": "Women",
+    "u12": "Under 12",
+    "youth": "Youth",
+    "v50": "Masters 50",
+    "v40": "Masters 40",
+    "mens": "Senior",
+}
+
+
+def race_label(category: str) -> str:
+    return _RACE_LABELS.get(category, category)
+
+
+def next_upload_round(session: Session, year: int) -> int:
+    """One past the latest round that already has any file, even if a category is missing."""
+    latest = repository.latest_uploaded_round(session, year)
+    if latest is None:
+        return 1
+    return latest + 1
+
+
+def other_file_for_same_race(
+    session: Session,
+    event_id: int,
+    filename: str,
+) -> Optional[ResultExport]:
+    """A different file already stored for this round and race. The same filename is a replace."""
+    category = determine_category_from_filename(filename)
+    if category in {"skip", "unknown"}:
+        return None
+    for row in repository.exports_for_event(session, event_id):
+        if row.filename == filename:
+            continue
+        if determine_category_from_filename(row.filename) == category:
+            return row
+    return None
+
+
+def duplicate_race_message(
+    session: Session,
+    event_id: int,
+    filename: str,
+    round_number: int,
+) -> Optional[str]:
+    other = other_file_for_same_race(session, event_id, filename)
+    if other is None:
+        return None
+    label = race_label(determine_category_from_filename(filename))
+    return f"Round {round_number} already has a {label} file ({other.filename})."
+
+
 @dataclass(frozen=True)
 class ExportListingRow:
     round_number: int
@@ -41,6 +102,13 @@ class ExportListingRow:
     uploaded_at: Optional[datetime]
     ingest_status: Optional[str]
     event_name: Optional[str]
+    standings_category: Optional[str]
+    original_version: Optional[int] = None
+    latest_version: Optional[int] = None
+
+
+def versioned_csv_filename(filename: str, version: int) -> str:
+    return f"{Path(filename).stem}.v{version}.csv"
 
 
 def list_exports_for_season(
@@ -50,9 +118,11 @@ def list_exports_for_season(
 ) -> list[ExportListingRow]:
     root = results_root or get_results_root()
     db_rows = repository.list_exports_for_year(session, year)
+    bounds = repository.csv_version_bounds(session, [export.id for export, _event in db_rows])
     by_key: dict[tuple[int, str], ExportListingRow] = {}
 
     for export, event in db_rows:
+        original_version, latest_version = bounds.get(export.id, (None, None))
         key = (event.round_number, export.filename)
         by_key[key] = ExportListingRow(
             round_number=event.round_number,
@@ -63,6 +133,9 @@ def list_exports_for_season(
             uploaded_at=export.uploaded_at,
             ingest_status=export.ingest_status,
             event_name=event.name,
+            standings_category=standings_category_for_filename(export.filename),
+            original_version=original_version,
+            latest_version=latest_version,
         )
 
     season_dir = root / str(year)
@@ -87,6 +160,9 @@ def list_exports_for_season(
                     uploaded_at=row.uploaded_at,
                     ingest_status=row.ingest_status,
                     event_name=row.event_name,
+                    standings_category=row.standings_category,
+                    original_version=row.original_version,
+                    latest_version=row.latest_version,
                 )
             else:
                 by_key[key] = ExportListingRow(
@@ -98,6 +174,7 @@ def list_exports_for_season(
                     uploaded_at=None,
                     ingest_status=None,
                     event_name=None,
+                    standings_category=standings_category_for_filename(path.name),
                 )
 
     return sorted(by_key.values(), key=lambda r: (r.round_number, r.filename))

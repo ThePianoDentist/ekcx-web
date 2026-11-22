@@ -39,6 +39,34 @@ class ResultExport(Base):
     previous_csv_text: Mapped[Optional[str]] = mapped_column(String, nullable=True)
 
     event: Mapped["Event"] = relationship(back_populates="result_exports")
+    versions: Mapped[List["ResultExportVersion"]] = relationship(
+        back_populates="export",
+        cascade="all, delete-orphan",
+    )
+
+
+class ResultExportVersion(Base):
+    """One stored CSV body for an export. Version 1 is the original upload."""
+
+    __tablename__ = "result_export_versions"
+    __table_args__ = (
+        UniqueConstraint(
+            "export_id",
+            "version",
+            name="uq_result_export_versions_export_version",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    export_id: Mapped[int] = mapped_column(
+        ForeignKey("result_exports.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    version: Mapped[int] = mapped_column(Integer, nullable=False)
+    csv_text: Mapped[str] = mapped_column(String, nullable=False)
+    created_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+
+    export: Mapped["ResultExport"] = relationship(back_populates="versions")
 
 
 class Result(Base):

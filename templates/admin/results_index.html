@@ -10,6 +10,10 @@
       <div id="content" style="background-color:white; color:black; padding: 20px">
         <h1>Result exports (admin)</h1>
         <p>
+          <a href="/">Main site</a>
+          ·
+          <a href="/standings/{{ year }}/v50">Standings</a>
+          ·
           <a href="/admin/">Admin home</a>
           ·
           <a href="/admin/results/upload?year={{ year }}">Upload file</a>
@@ -35,10 +39,10 @@
             <tr style="border-bottom: 2px solid #ddd; text-align: left;">
               <th style="padding: 6px;">Round</th>
               <th style="padding: 6px;">Filename</th>
-              <th style="padding: 6px;">On disk</th>
-              <th style="padding: 6px;">In DB</th>
               <th style="padding: 6px;">Uploaded</th>
               <th style="padding: 6px;">Ingest</th>
+              <th style="padding: 6px;">Original</th>
+              <th style="padding: 6px;">Latest</th>
               <th style="padding: 6px;"></th>
             </tr>
           </thead>
@@ -46,19 +50,30 @@
             {% for row in rows %}
             <tr style="border-bottom: 1px solid #eee;">
               <td style="padding: 6px;">{{ row.round_number }}</td>
-              <td style="padding: 6px;">{{ row.filename }}</td>
-              <td style="padding: 6px;">{{ "yes" if row.on_disk else "no" }}</td>
-              <td style="padding: 6px;">{{ "yes" if row.in_db else "no" }}</td>
+              <td style="padding: 6px;">
+                {% if row.standings_category %}
+                <a href="/standings/{{ year }}/{{ row.standings_category }}">{{ row.filename }}</a>
+                {% else %}
+                {{ row.filename }}
+                {% endif %}
+              </td>
               <td style="padding: 6px;">
                 {% if row.uploaded_at %}{{ row.uploaded_at.strftime("%Y-%m-%d %H:%M") }} UTC{% else %}—{% endif %}
               </td>
               <td style="padding: 6px;">{{ row.ingest_status or "—" }}</td>
               <td style="padding: 6px;">
-                {% if row.export_id %}
-                <a href="/admin/results/exports/{{ row.export_id }}/download">Download</a>
-                {% if row.ingest_status == "pending_review" %}
-                · <a href="/admin/results/exports/{{ row.export_id }}/review?year={{ year }}">Review</a>
-                {% endif %}
+                {% if row.export_id and row.original_version %}
+                <a href="/admin/results/exports/{{ row.export_id }}/download?version={{ row.original_version }}">v{{ row.original_version }}</a>
+                {% else %}—{% endif %}
+              </td>
+              <td style="padding: 6px;">
+                {% if row.export_id and row.latest_version %}
+                <a href="/admin/results/exports/{{ row.export_id }}/download?version={{ row.latest_version }}">v{{ row.latest_version }}</a>
+                {% else %}—{% endif %}
+              </td>
+              <td style="padding: 6px;">
+                {% if row.export_id and row.ingest_status == "pending_review" %}
+                <a href="/admin/results/exports/{{ row.export_id }}/review?year={{ year }}">Review</a>
                 {% endif %}
               </td>
             </tr>

@@ -100,6 +100,7 @@ def test_wrong_password_shows_error(client: TestClient):
     # Check:
     assert response.status_code == 401
     assert "Invalid email or password" in response.text
+    assert 'href="/"' in response.text
     assert blocked.status_code == 303
 
 
@@ -111,6 +112,10 @@ def test_admin_homepage(client: TestClient):
     assert response.status_code == 200
     assert "Upload results" in response.text
     assert "/admin/results/upload" in response.text
+    assert 'href="/"' in response.text
+    upload = client.get("/admin/results/upload?year=2026")
+    assert upload.status_code == 200
+    assert 'href="/"' in upload.text
 
 
 def test_logout_clears_session(client: TestClient):
