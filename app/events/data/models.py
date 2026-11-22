@@ -9,7 +9,7 @@ from app.db.base import Base
 
 if TYPE_CHECKING:
     from app.participants.data.models import NameNormalisation
-    from app.results.data.models import Result
+    from app.results.data.models import Result, ResultExport
     from app.standings.data.models import EventPoints
 
 
@@ -28,6 +28,10 @@ class Event(Base):
     status: Mapped[Optional[str]] = mapped_column(String, nullable=True)
 
     results: Mapped[List["Result"]] = relationship(back_populates="event")
+    result_exports: Mapped[List["ResultExport"]] = relationship(
+        back_populates="event",
+        cascade="all, delete-orphan",
+    )
     event_points: Mapped[List["EventPoints"]] = relationship(back_populates="event")
     name_normalisations: Mapped[List["NameNormalisation"]] = relationship(
         back_populates="event",

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, List, Optional
 
-from sqlalchemy import Boolean, CheckConstraint, ForeignKey, Integer, JSON, String
+from sqlalchemy import Boolean, CheckConstraint, ForeignKey, Integer, JSON, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -10,6 +10,25 @@ from app.db.base import Base
 if TYPE_CHECKING:
     from app.events.data.models import Event
     from app.participants.data.models import Club, Participant
+
+
+class ResultExport(Base):
+    """CrossMgr file body as CSV text (licence columns already removed)."""
+
+    __tablename__ = "result_exports"
+    __table_args__ = (
+        UniqueConstraint("event_id", "filename", name="uq_result_exports_event_filename"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    event_id: Mapped[int] = mapped_column(
+        ForeignKey("events.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    filename: Mapped[str] = mapped_column(String, nullable=False)
+    csv_text: Mapped[str] = mapped_column(String, nullable=False)
+
+    event: Mapped["Event"] = relationship(back_populates="result_exports")
 
 
 class Result(Base):
