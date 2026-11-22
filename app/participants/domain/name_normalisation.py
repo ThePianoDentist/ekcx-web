@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Literal, Tuple
 
@@ -64,7 +65,7 @@ def _rider_context(
     rider: RiderKey,
 ) -> Tuple[List[str], List[str]]:
     rounds: set[str] = set()
-    clubs: set[str] = set()
+    club_rounds: dict[str, set[str]] = defaultdict(set)
     for rounds_map in all_results.values():
         for round_num, rows in rounds_map.items():
             for row in rows:
@@ -73,9 +74,14 @@ def _rider_context(
                     key[0].upper() == rider[0].upper() and key[1].upper() == rider[1].upper()
                 ):
                     rounds.add(round_num)
-                    if row.get("team"):
-                        clubs.add(row["team"])
-    return sorted(rounds, key=int), sorted(clubs)
+                    team = row.get("team")
+                    if team:
+                        club_rounds[team].add(round_num)
+    clubs = [
+        f"{name} ({', '.join(sorted(rs, key=int))})"
+        for name, rs in sorted(club_rounds.items(), key=lambda item: item[0].lower())
+    ]
+    return sorted(rounds, key=int), clubs
 
 
 def _team_context(all_results: Dict[str, Dict[str, List[dict]]], team: str) -> List[str]:

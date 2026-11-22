@@ -35,7 +35,7 @@
         <p style="color: #b91c1c;">{{ error }}</p>
         {% endif %}
         {% if csv_diff %}
-        <h2>CSV changes (re-upload)</h2>
+        <h2>CSV changes (reupload)</h2>
         <p>Confirming will rebuild {{ year }} standings for the whole season.</p>
         <pre class="diff">{{ csv_diff }}</pre>
         {% endif %}
@@ -50,21 +50,21 @@
             <table class="rev">
               <thead>
                 <tr>
+                  <th>Apply</th>
                   <th>Kind</th>
                   <th>From → To</th>
                   <th>Rounds (this season)</th>
                   <th>Clubs</th>
-                  <th>Apply</th>
                 </tr>
               </thead>
               <tbody>
                 {% for row in review.stored %}
                 <tr>
+                  <td><input type="checkbox" name="accept" value="{{ row.id }}" checked aria-label="Apply" /></td>
                   <td>{{ row.kind }}</td>
-                  <td><strong>{{ row.source }}</strong> → {{ row.target }}</td>
+                  <td>{{ row.source }} → <strong>{{ row.target }}</strong></td>
                   <td>{{ row.rounds | join(", ") or "—" }}</td>
                   <td>{{ row.clubs | join("; ") or "—" }}</td>
-                  <td><input type="checkbox" name="accept" value="{{ row.id }}" checked aria-label="Apply" /></td>
                 </tr>
                 {% endfor %}
               </tbody>
@@ -81,23 +81,23 @@
             <table class="rev">
               <thead>
                 <tr>
+                  <th>Apply</th>
                   <th>Kind</th>
                   <th>Reason</th>
                   <th>From → To</th>
                   <th>Rounds</th>
                   <th>Clubs</th>
-                  <th>Apply</th>
                 </tr>
               </thead>
               <tbody>
                 {% for row in review.suggestions %}
                 <tr>
+                  <td><input type="checkbox" name="accept" value="{{ row.id }}" checked aria-label="Apply" /></td>
                   <td>{{ row.kind }}</td>
                   <td>{{ row.reason }}</td>
-                  <td><strong>{{ row.source }}</strong> → {{ row.target }}</td>
+                  <td>{{ row.source }} → <strong>{{ row.target }}</strong></td>
                   <td>{{ row.rounds | join(", ") or "—" }}</td>
                   <td>{{ row.clubs | join("; ") or "—" }}</td>
-                  <td><input type="checkbox" name="accept" value="{{ row.id }}" checked aria-label="Apply" /></td>
                 </tr>
                 {% endfor %}
               </tbody>
@@ -120,16 +120,17 @@
             <button type="submit" name="action" value="confirm" class="btn-confirm">Confirm</button>
             {% if review.stored or review.suggestions %}
             ·
-            <a href="/admin/results/exports/{{ export_id }}/download-suggested?year={{ year }}">Download CSV</a>
+            <a href="/admin/results/exports/{{ export_id }}/download-suggested?year={{ year }}">Download edited CSV</a>
             {% endif %}
           </p>
-          <p class="file-pick">
-            <label>Re-upload file<br />
+          <p class="file-pick">Or . . .</p>
+          <p class="file-pick" style="margin-top: 0;">
+            <label><strong>Reupload file</strong><br />
               <input type="file" name="file" accept=".csv,.xlsx" />
             </label>
           </p>
           <p style="margin: 0.5em 0 0;">
-            <button type="submit" name="action" value="reupload">Re-upload and confirm</button>
+            <button type="submit" name="action" value="reupload" class="btn-confirm">Reupload and confirm</button>
           </p>
         </form>
       </div>

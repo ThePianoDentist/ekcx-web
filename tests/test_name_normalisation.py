@@ -3,6 +3,7 @@ from __future__ import annotations
 from app.participants.domain.name_normalisation import (
     LoadedRules,
     NameSuggestion,
+    _rider_context,
     apply_stored_rules_to_results,
     build_stored_maps,
     maps_for_accepted,
@@ -114,3 +115,56 @@ def test_similarity_suggestions_do_not_auto_apply():
     # Check:
     assert all_results["mens"]["1"][0]["first_name"] == "Mike"
     assert any(s.kind == "rider" for s in suggestions)
+
+
+def test_rider_context_clubs_include_rounds_per_club():
+    # Setup:
+    all_results = {
+        "womens": {
+            "1": [
+                {
+                    "round": "1",
+                    "last_name": "MALPASS",
+                    "first_name": "Joanne",
+                    "team": "VC Deal",
+                    "position": 1,
+                    "points": 100,
+                    "dnf": False,
+                    "category": "",
+                    "gender": "W",
+                }
+            ],
+            "2": [
+                {
+                    "round": "2",
+                    "last_name": "MALPASS",
+                    "first_name": "Jo",
+                    "team": "VC Deal",
+                    "position": 3,
+                    "points": 90,
+                    "dnf": False,
+                    "category": "",
+                    "gender": "W",
+                },
+                {
+                    "round": "2",
+                    "last_name": "JO",
+                    "first_name": "Jo",
+                    "team": "Other CC",
+                    "position": 4,
+                    "points": 86,
+                    "dnf": False,
+                    "category": "",
+                    "gender": "W",
+                },
+            ],
+        }
+    }
+
+    # Run:
+    _rounds, clubs = _rider_context(all_results, ("MALPASS", "Jo"))
+
+    # Check:
+    assert clubs == ["VC Deal (2)"]
+    _rounds2, clubs2 = _rider_context(all_results, ("MALPASS", "Joanne"))
+    assert clubs2 == ["VC Deal (1)"]
