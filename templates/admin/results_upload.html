@@ -1,0 +1,44 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+  <title>Admin — Upload result file</title>
+  {% include "head.html" %}
+</head>
+<body>
+  <div id="main">
+    <div id="site_content">
+      <div id="content" style="background-color:white; color:black; padding: 20px">
+        <h1>Upload result file</h1>
+        <p><a href="/admin/results/?year={{ year }}">← Back to list</a></p>
+        {% if error %}
+        <p style="color: #b91c1c;">{{ error }}</p>
+        {% endif %}
+        <form method="post" action="/admin/results/upload" enctype="multipart/form-data" style="max-width: 28em;">
+          <p>
+            <label>Year<br />
+              <input type="number" name="year" value="{{ year }}" min="2020" max="2030" required />
+            </label>
+          </p>
+          <p>
+            <label>Round<br />
+              <input type="number" name="round_number" value="{{ round_number }}" min="1" max="10" required />
+            </label>
+          </p>
+          <p>
+            <label>CrossMgr export (.csv or .xlsx)<br />
+              <input type="file" name="file" accept=".csv,.xlsx,.CSV" required />
+            </label>
+          </p>
+          <p>
+            <button type="submit">Upload</button>
+          </p>
+        </form>
+        <p style="font-size: 0.9em; color: #555;">
+          The event for this year and round must exist in the database (e.g. after <code>make db-backfill</code>).
+          Licence columns are stripped before storage.
+        </p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

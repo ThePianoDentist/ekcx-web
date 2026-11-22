@@ -1,0 +1,67 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+  <title>Admin — Result exports</title>
+  {% include "head.html" %}
+</head>
+<body>
+  <div id="main">
+    <div id="site_content">
+      <div id="content" style="background-color:white; color:black; padding: 20px">
+        <h1>Result exports (admin)</h1>
+        <p>
+          <a href="/admin/results/upload?year={{ year }}">Upload file</a>
+        </p>
+        {% if db_error %}
+        <p style="color: #b91c1c;">{{ db_error }}</p>
+        {% endif %}
+        {% if msg == "uploaded" %}
+        <p style="color: #15803d;">Upload saved to disk and database.</p>
+        {% endif %}
+        <form method="get" action="/admin/results/" style="margin-bottom: 1em;">
+          <label>Season year:
+            <input type="number" name="year" value="{{ year }}" min="2020" max="2030" />
+          </label>
+          <button type="submit">Show</button>
+        </form>
+        <table style="width:100%; border-collapse: collapse; font-size: 0.95em;">
+          <thead>
+            <tr style="border-bottom: 2px solid #ddd; text-align: left;">
+              <th style="padding: 6px;">Round</th>
+              <th style="padding: 6px;">Filename</th>
+              <th style="padding: 6px;">On disk</th>
+              <th style="padding: 6px;">In DB</th>
+              <th style="padding: 6px;">Uploaded</th>
+              <th style="padding: 6px;">Ingest</th>
+              <th style="padding: 6px;"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in rows %}
+            <tr style="border-bottom: 1px solid #eee;">
+              <td style="padding: 6px;">{{ row.round_number }}</td>
+              <td style="padding: 6px;">{{ row.filename }}</td>
+              <td style="padding: 6px;">{{ "yes" if row.on_disk else "no" }}</td>
+              <td style="padding: 6px;">{{ "yes" if row.in_db else "no" }}</td>
+              <td style="padding: 6px;">
+                {% if row.uploaded_at %}{{ row.uploaded_at.strftime("%Y-%m-%d %H:%M") }} UTC{% else %}—{% endif %}
+              </td>
+              <td style="padding: 6px;">{{ row.ingest_status or "—" }}</td>
+              <td style="padding: 6px;">
+                {% if row.export_id %}
+                <a href="/admin/results/exports/{{ row.export_id }}/download">Download</a>
+                {% endif %}
+              </td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="7" style="padding: 12px;">No files for {{ year }}.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
