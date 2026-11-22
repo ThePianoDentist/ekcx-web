@@ -6,9 +6,11 @@ from app.participants.domain.name_normalisation import (
     _rider_context,
     apply_stored_rules_to_results,
     build_stored_maps,
+    build_stored_maps_for_refresh,
     maps_for_accepted,
     new_suggestions,
 )
+from app.participants.data.models import RiderNameRule
 
 
 def test_stored_rider_rule_applies():
@@ -115,6 +117,41 @@ def test_similarity_suggestions_do_not_auto_apply():
     # Check:
     assert all_results["mens"]["1"][0]["first_name"] == "Mike"
     assert any(s.kind == "rider" for s in suggestions)
+
+
+def test_unchecked_stored_rule_dropped_for_refresh():
+    # Setup:
+    rules = LoadedRules(
+        rider_rows=[
+            RiderNameRule(
+                raw_last_name="MALPASS",
+                raw_first_name="JO",
+                canonical_last_name="MALPASS",
+                canonical_first_name="Joanne",
+                category="",
+                source="predefined",
+            )
+        ],
+        club_rows=[],
+    )
+    stored = [
+        NameSuggestion(
+            id="stored-rider:MALPASS:Jo",
+            kind="rider",
+            reason="stored",
+            source="MALPASS, Jo",
+            target="MALPASS, Joanne",
+            rounds=["2"],
+        )
+    ]
+
+    # Run:
+    accepted, _ = build_stored_maps_for_refresh(rules, stored, stored[0].id)
+    ignored, _ = build_stored_maps_for_refresh(rules, stored, set())
+
+    # Check:
+    assert ("MALPASS", "Jo") in accepted
+    assert ("MALPASS", "Jo") not in ignored
 
 
 def test_rider_context_clubs_include_rounds_per_club():

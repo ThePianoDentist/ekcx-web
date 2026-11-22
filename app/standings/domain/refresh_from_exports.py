@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.events.data.models import Event
 from app.participants.data.models import Club, ClubMembership, Participant
+from app.participants.domain.name_normalisation import RiderKey
 from app.results.data import repository
 from app.results.data.models import Result
 from app.results.domain.collect_exports import IngestError, collect_results_from_exports
@@ -46,7 +47,14 @@ def season_start_for_year(events: list[Event], year: int) -> date:
     return date(year, 9, 13)
 
 
-def refresh_season_from_exports(session: Session, year: int) -> tuple[int, int]:
+def refresh_season_from_exports(
+    session: Session,
+    year: int,
+    *,
+    stored_rider_rules: dict[RiderKey, RiderKey] | None = None,
+    stored_team_rules: dict[str, str] | None = None,
+    merge_similar: bool = False,
+) -> tuple[int, int]:
     """
     Parse all result_exports for year, replace computed tables, mark ingested.
 
@@ -71,5 +79,8 @@ def refresh_season_from_exports(session: Session, year: int) -> tuple[int, int]:
         all_results,
         events_by_round,
         season_start_for_year(events, year),
+        merge_similar=merge_similar,
+        stored_rider_rules=stored_rider_rules,
+        stored_team_rules=stored_team_rules,
     )
     return riders, standings_rows

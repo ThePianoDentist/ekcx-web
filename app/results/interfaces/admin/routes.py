@@ -11,6 +11,7 @@ from starlette.responses import HTMLResponse, RedirectResponse, Response
 
 from app.db.session import get_session_factory
 from app.participants.domain.name_normalisation import (
+    build_stored_maps_for_refresh,
     load_rules,
     maps_for_accepted,
     new_suggestions,
@@ -147,9 +148,21 @@ async def export_review(request: Request, export_id: int, year: int = 2026, erro
         session.close()
 
 
-def _finish_ingest(session, export: ResultExport, year: int) -> None:
+def _finish_ingest(
+    session,
+    export: ResultExport,
+    year: int,
+    *,
+    stored_rider_rules=None,
+    stored_team_rules=None,
+) -> None:
     repository.mark_export_ingested(session, export)
-    refresh_season_from_exports(session, year)
+    refresh_season_from_exports(
+        session,
+        year,
+        stored_rider_rules=stored_rider_rules,
+        stored_team_rules=stored_team_rules,
+    )
 
 
 @router.post("/exports/{export_id}/confirm")
@@ -207,7 +220,16 @@ async def export_confirm(
         upsert_accepted_suggestions(
             session, review.suggestions, accepted_ids, source="admin"
         )
-        _finish_ingest(session, export, year)
+        stored_rider, stored_team = build_stored_maps_for_refresh(
+            rules, review.stored, accepted_ids
+        )
+        _finish_ingest(
+            session,
+            export,
+            year,
+            stored_rider_rules=stored_rider,
+            stored_team_rules=stored_team,
+        )
         session.commit()
     except ConfirmValidationError as exc:
         session.rollback()

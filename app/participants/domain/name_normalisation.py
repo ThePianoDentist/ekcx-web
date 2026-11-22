@@ -60,6 +60,29 @@ def build_stored_maps(rules: LoadedRules) -> Tuple[Dict[RiderKey, RiderKey], Dic
     return rider, club
 
 
+def build_stored_maps_for_refresh(
+    rules: LoadedRules,
+    stored_suggestions: List[NameSuggestion],
+    accepted_ids: set[str],
+) -> Tuple[Dict[RiderKey, RiderKey], Dict[str, str]]:
+    """Cross-season rules for rebuild; unchecked stored rows on review are not applied."""
+    rider, team = build_stored_maps(rules)
+    for item in stored_suggestions:
+        if item.reason != "stored" or item.id in accepted_ids:
+            continue
+        if item.kind == "rider":
+            parts = [p.strip() for p in item.source.split(",", 1)]
+            if len(parts) != 2:
+                continue
+            raw = (normalize_name(parts[0]), normalize_first_name(parts[1]))
+            for key in list(rider):
+                if key[0].upper() == raw[0].upper() and key[1].upper() == raw[1].upper():
+                    rider.pop(key, None)
+        elif item.source in team:
+            team.pop(item.source, None)
+    return rider, team
+
+
 def _rider_context(
     all_results: Dict[str, Dict[str, List[dict]]],
     rider: RiderKey,
