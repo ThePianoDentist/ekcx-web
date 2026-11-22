@@ -14,7 +14,11 @@ from sqlalchemy import func, select
 from app.db import session as db_session
 from app.events.data.models import Event
 from app.results.data.models import Result, ResultExport
-from app.results.data.repository import INGEST_STATUS_INGESTED
+from app.results.data.repository import (
+    INGEST_STATUS_INGESTED,
+    INGEST_STATUS_PENDING_REVIEW,
+    mark_export_ingested,
+)
 from app.results.domain.race_dataframe import prepare_race_dataframe
 from app.standings.data.models import Standing
 from app.standings.domain.refresh_from_exports import refresh_season_from_exports
@@ -106,6 +110,9 @@ def test_refresh_from_exports_builds_standings(ingest_env):
 
     # Run:
     with factory() as session:
+        export = session.scalar(select(ResultExport))
+        assert export is not None
+        mark_export_ingested(session, export)
         riders, standings_rows = refresh_season_from_exports(session, 2026)
         session.commit()
 
@@ -124,7 +131,7 @@ def test_refresh_from_exports_builds_standings(ingest_env):
         assert n_standings >= 1
 
 
-def test_upload_triggers_ingest(ingest_env):
+def test_upload_goes_to_review_before_standings(ingest_env):
     # Setup:
     _db_path, _results_root = ingest_env
     import main
@@ -152,8 +159,59 @@ def test_upload_triggers_ingest(ingest_env):
 
     # Check:
     assert response.status_code == 303
+    assert "/review" in response.headers["location"]
     factory = db_session.create_session_factory()
     with factory() as session:
+        export = session.scalar(select(ResultExport))
+        assert export is not None
+        assert export.ingest_status == INGEST_STATUS_PENDING_REVIEW
+        standing = session.scalar(
+            select(Standing).where(Standing.year == 2026, Standing.category == "mens")
+        )
+        assert standing is None
+
+
+def test_confirm_ingest_builds_standings(ingest_env):
+    # Setup:
+    _db_path, _results_root = ingest_env
+    import main
+
+    importlib.reload(main)
+    client = TestClient(main.app)
+    login = client.post(
+        "/admin/login",
+        data={
+            "email": ADMIN_EMAIL,
+            "password": ADMIN_PASSWORD,
+            "next": "/admin/results/",
+        },
+        follow_redirects=False,
+    )
+    assert login.status_code == 303
+    upload = client.post(
+        "/admin/results/upload",
+        data={"year": "2026", "round_number": "1"},
+        files={"file": ("senior_open.csv", VALID_CSV.encode(), "text/csv")},
+        follow_redirects=False,
+    )
+    assert upload.status_code == 303
+    location = upload.headers["location"]
+    export_id = location.split("/exports/")[1].split("/")[0]
+
+    # Run:
+    confirm = client.post(
+        f"/admin/results/exports/{export_id}/confirm",
+        data={"year": "2026"},
+        follow_redirects=False,
+    )
+
+    # Check:
+    assert confirm.status_code == 303
+    factory = db_session.create_session_factory()
+    with factory() as session:
+        export = session.get(ResultExport, int(export_id))
+        assert export is not None
+        assert export.ingest_status == INGEST_STATUS_INGESTED
         standing = session.scalar(
             select(Standing).where(Standing.year == 2026, Standing.category == "mens")
         )

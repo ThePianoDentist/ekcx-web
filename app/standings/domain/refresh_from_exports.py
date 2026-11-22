@@ -8,7 +8,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from app.events.data.models import Event
-from app.participants.data.models import Club, ClubMembership, NameNormalisation, Participant
+from app.participants.data.models import Club, ClubMembership, Participant
 from app.results.data import repository
 from app.results.data.models import Result
 from app.results.domain.collect_exports import IngestError, collect_results_from_exports
@@ -22,7 +22,6 @@ def clear_computed_league(session: Session) -> None:
         EventPoints,
         ClubCategoryPoints,
         Result,
-        NameNormalisation,
         ClubMembership,
         Standing,
         ClubStanding,
@@ -73,5 +72,4 @@ def refresh_season_from_exports(session: Session, year: int) -> tuple[int, int]:
         events_by_round,
         season_start_for_year(events, year),
     )
-    repository.mark_exports_ingested(session, year)
     return riders, standings_rows

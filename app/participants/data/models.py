@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 from typing import TYPE_CHECKING, List, Optional
 
-from sqlalchemy import Date, ForeignKey, Index, Integer, String, text
+from sqlalchemy import Date, DateTime, ForeignKey, Index, Integer, String, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -112,3 +112,64 @@ class NameNormalisation(Base):
 
     participant: Mapped["Participant"] = relationship(back_populates="name_normalisations")
     event: Mapped[Optional["Event"]] = relationship(back_populates="name_normalisations")
+
+
+class RiderNameRule(Base):
+    """Cross-season mapping from raw rider name to canonical name."""
+
+    __tablename__ = "rider_name_rules"
+    __table_args__ = (
+        Index(
+            "uq_rider_rule_global",
+            "raw_last_name",
+            "raw_first_name",
+            "category",
+            unique=True,
+            sqlite_where=text("event_id IS NULL"),
+        ),
+        Index(
+            "uq_rider_rule_event",
+            "raw_last_name",
+            "raw_first_name",
+            "category",
+            "event_id",
+            unique=True,
+            sqlite_where=text("event_id IS NOT NULL"),
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    raw_last_name: Mapped[str] = mapped_column(String, nullable=False)
+    raw_first_name: Mapped[str] = mapped_column(String, nullable=False)
+    canonical_last_name: Mapped[str] = mapped_column(String, nullable=False)
+    canonical_first_name: Mapped[str] = mapped_column(String, nullable=False)
+    category: Mapped[str] = mapped_column(String, nullable=False, server_default="")
+    event_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("events.id", ondelete="CASCADE"),
+        nullable=True,
+    )
+    source: Mapped[str] = mapped_column(String, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        server_default=text("(datetime('now'))"),
+    )
+
+    event: Mapped[Optional["Event"]] = relationship()
+
+
+class ClubNameRule(Base):
+    """Cross-season mapping from raw club/team string to canonical name."""
+
+    __tablename__ = "club_name_rules"
+    __table_args__ = (Index("uq_club_rule_raw", "raw_name", unique=True),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    raw_name: Mapped[str] = mapped_column(String, nullable=False)
+    canonical_name: Mapped[str] = mapped_column(String, nullable=False)
+    source: Mapped[str] = mapped_column(String, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        server_default=text("(datetime('now'))"),
+    )

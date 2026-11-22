@@ -163,6 +163,7 @@ def load_season(session: Session, results_dir: Path) -> None:
         all_results,
         events,
         SEASON_START,
+        merge_similar=True,
     )
     from app.results.data import repository
 
