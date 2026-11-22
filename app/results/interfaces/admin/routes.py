@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from fastapi import APIRouter, File, Form, UploadFile
 from sqlalchemy import select
 from sqlalchemy.exc import OperationalError
@@ -93,15 +95,17 @@ async def download_suggested_export(export_id: int, year: int = 2026):
             return Response(status_code=404, content="Not found")
         review = build_export_review(session, export, year)
         rules = load_rules(session)
-        accepted = {s.id for s in review.suggestions}
+        accepted = {s.id for s in review.stored + review.suggestions}
         rider_map, team_map = maps_for_accepted(
             review.stored + review.suggestions,
             accepted,
             rules,
         )
         suggested = apply_maps_to_csv(export.csv_text, rider_map, team_map)
+        stem = Path(export.filename).stem
+        download_name = f"suggested_{stem}.csv"
         headers = {
-            "Content-Disposition": f'attachment; filename="suggested_{export.filename}"',
+            "Content-Disposition": f'attachment; filename="{download_name}"',
         }
         return Response(
             content=suggested,
@@ -148,48 +152,12 @@ def _finish_ingest(session, export: ResultExport, year: int) -> None:
     refresh_season_from_exports(session, year)
 
 
-@router.post("/exports/{export_id}/accept-all")
-async def export_accept_all(export_id: int, year: int = Form(...)):
-    factory = get_session_factory()
-    session = factory()
-    try:
-        export = repository.get_export(session, export_id)
-        if export is None:
-            return Response(status_code=404, content="Not found")
-        review = build_export_review(session, export, year)
-        accepted = {s.id for s in review.suggestions}
-        rider_map, team_map = maps_for_accepted(
-            review.stored + review.suggestions,
-            accepted,
-            rules,
-        )
-        export.csv_text = apply_maps_to_csv(export.csv_text, rider_map, team_map)
-        upsert_accepted_suggestions(
-            session, review.suggestions, accepted, source="admin"
-        )
-        _finish_ingest(session, export, year)
-        session.commit()
-    except (IngestError, OperationalError) as exc:
-        session.rollback()
-        msg = exc.message if hasattr(exc, "message") else str(exc)
-        return RedirectResponse(
-            url=f"/admin/results/exports/{export_id}/review?year={year}&error={msg}",
-            status_code=303,
-        )
-    finally:
-        session.close()
-    return RedirectResponse(
-        url=f"/admin/results/?year={year}&msg=ingested",
-        status_code=303,
-    )
-
-
 @router.post("/exports/{export_id}/confirm")
 async def export_confirm(
     export_id: int,
     year: int = Form(...),
+    action: str = Form("confirm"),
     accept: list[str] | None = Form(None),
-    ignore: list[str] | None = Form(None),
     file: UploadFile | None = File(None),
     confirm_overwrite: str | None = Form(None),
 ):
@@ -199,7 +167,9 @@ async def export_confirm(
         export = repository.get_export(session, export_id)
         if export is None:
             return Response(status_code=404, content="Not found")
-        if file and file.filename:
+        if action == "reupload":
+            if not file or not file.filename:
+                raise ExportError("Choose a file to re-upload.")
             data = await file.read()
             from app.results.domain.exports import safe_filename
             from app.results.domain.raw_export import file_to_sanitized_csv
@@ -224,7 +194,8 @@ async def export_confirm(
         review = build_export_review(session, export, year)
         rules = load_rules(session)
         accepted_ids = _parse_id_list(accept)
-        ignored_ids = _parse_id_list(ignore)
+        new_ids = {s.id for s in review.suggestions}
+        ignored_ids = new_ids - accepted_ids
         validate_confirm(export.csv_text, review.suggestions, accepted_ids, ignored_ids)
 
         rider_map, team_map = maps_for_accepted(

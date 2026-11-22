@@ -35,7 +35,12 @@ def _drop_crossmgr_footer(df: pd.DataFrame) -> pd.DataFrame:
 
     def row_contains_footer(row) -> bool:
         for val in row:
-            if isinstance(val, str) and "Powered by CrossMgr" in val:
+            if not isinstance(val, str):
+                continue
+            text = val.strip()
+            if "Powered by CrossMgr" in text:
+                return True
+            if text.startswith("Total:"):
                 return True
         return False
 
@@ -106,10 +111,14 @@ def sanitize_csv_text(text: str) -> str | None:
 
 def file_to_sanitized_csv(path: Path) -> str | None:
     suffix = path.suffix.lower()
+    df = pd.DataFrame()
     if suffix == ".csv":
         df = _read_csv_path(path)
     elif suffix == ".xlsx":
         df = _read_xlsx_path(path)
+        if df.empty:
+            # Download-suggested serves CSV bytes but may keep the source .xlsx name.
+            df = _read_csv_path(path)
     else:
         return None
     return dataframe_to_stored_csv(df)

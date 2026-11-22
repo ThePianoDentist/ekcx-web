@@ -9,11 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.events.data.models import Event
 from app.participants.data.models import Club, ClubMembership, Participant
-from app.participants.domain.name_normalisation import (
-    apply_stored_rules_to_results,
-    build_stored_maps,
-    load_rules,
-)
+from app.participants.domain.name_normalisation import build_stored_maps, load_rules
 from app.results.data.models import Result
 from app.standings.data.models import ClubCategoryPoints, ClubStanding, EventPoints, Standing
 from scripts.generate_standings_2025 import (
@@ -99,19 +95,16 @@ def persist_season_results(
     """Insert Result, Standing, and related rows. Caller clears stale rows first."""
     stamp_raw_names(all_results)
     rules = load_rules(session)
-    if merge_similar:
-        stored_rider, stored_team = build_stored_maps(rules)
-        normalize_rider_and_team_names(
-            all_results,
-            merge_similar=True,
-            apply_to_results=True,
-            stored_rider_rules=stored_rider,
-            stored_team_rules=stored_team,
-            use_script_predefined=False,
-            log=False,
-        )
-    else:
-        apply_stored_rules_to_results(all_results, rules)
+    stored_rider, stored_team = build_stored_maps(rules)
+    normalize_rider_and_team_names(
+        all_results,
+        merge_similar=merge_similar,
+        apply_to_results=True,
+        stored_rider_rules=stored_rider,
+        stored_team_rules=stored_team,
+        use_script_predefined=False,
+        log=False,
+    )
     category_standings = calculate_standings(all_results)
     team_standings = calculate_team_standings(all_results, category_standings)
 

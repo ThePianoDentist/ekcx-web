@@ -1,6 +1,7 @@
-# Shared helpers for local/shell.env + ~/.zshrc (source from other local/*.sh scripts).
-ROOT="$(cd "$(dirname "${BASH_SOURCE[1]:-$0}")" && pwd)"
-ENV_FILE="${ROOT}/shell.env"
+# Shared helpers for repo-root `.env` + optional ~/.zshrc block (source from local/*.sh).
+LOCAL_DIR="$(cd "$(dirname "${BASH_SOURCE[1]:-$0}")" && pwd)"
+ROOT="$(cd "${LOCAL_DIR}/.." && pwd)"
+ENV_FILE="${ROOT}/.env"
 ZSHRC="${HOME}/.zshrc"
 MARKER_START="# >>> ekcx-web local env >>>"
 MARKER_END="# <<< ekcx-web local env <<<"
@@ -14,7 +15,13 @@ import sys
 zshrc = pathlib.Path(sys.argv[1])
 env_file = pathlib.Path(sys.argv[2])
 start, end = sys.argv[3], sys.argv[4]
-block = f"{start}\n[[ -f {env_file} ]] && source {env_file}\n{end}"
+block = (
+    f"{start}\n"
+    f'_ekcx_env="{env_file}"\n'
+    f'[[ -f "$_ekcx_env" ]] && set -a && source "$_ekcx_env" && set +a\n'
+    f"unset _ekcx_env\n"
+    f"{end}"
+)
 text = zshrc.read_text() if zshrc.exists() else ""
 pattern = re.compile(re.escape(start) + r".*?" + re.escape(end), re.DOTALL)
 if pattern.search(text):
@@ -28,17 +35,11 @@ print(f"{action} {zshrc} (ekcx-web block).")
 PY
 }
 
-quote_single() {
-  local v="$1"
-  v="${v//\'/\'\\\'\'}"
-  printf "'%s'" "$v"
-}
-
-# Set or replace export KEY='value' in shell.env (preserves other lines).
+# Set or replace KEY=value in `.env` (dotenv format, no export).
 set_shell_env_var() {
   local key="$1"
   local value="$2"
-  local header="${3-# ekcx-web local env — do not commit.}"
+  local header="${3-# ekcx-web local — do not commit. See .env_sample.}"
 
   umask 077
   python3 - "$ENV_FILE" "$key" "$value" "$header" <<'PY'
@@ -49,7 +50,7 @@ path = pathlib.Path(sys.argv[1])
 key = sys.argv[2]
 value = sys.argv[3]
 header = sys.argv[4]
-line = f"export {key}={value!r}"
+line = f"{key}={value}"
 
 lines: list[str] = []
 if path.exists():
@@ -57,7 +58,7 @@ if path.exists():
 else:
     lines = [header]
 
-lines = [ln for ln in lines if not ln.startswith(f"export {key}=")]
+lines = [ln for ln in lines if not ln.startswith(f"{key}=")]
 if not lines or not lines[0].startswith("#"):
     lines.insert(0, header)
 lines.append(line)

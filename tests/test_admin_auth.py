@@ -66,6 +66,10 @@ def _login(client: TestClient, email: str = ADMIN_EMAIL, password: str = ADMIN_P
 
 def test_unauthenticated_admin_redirects_to_login(client: TestClient):
     # Run:
+    response = client.get("/admin/", follow_redirects=False)
+    # Check:
+    assert response.status_code == 303
+    assert response.headers["location"].startswith("/admin/login?next=")
     response = client.get("/admin/results/", follow_redirects=False)
     # Check:
     assert response.status_code == 303
@@ -97,6 +101,16 @@ def test_wrong_password_shows_error(client: TestClient):
     assert response.status_code == 401
     assert "Invalid email or password" in response.text
     assert blocked.status_code == 303
+
+
+def test_admin_homepage(client: TestClient):
+    # Run:
+    _login(client)
+    response = client.get("/admin/")
+    # Check:
+    assert response.status_code == 200
+    assert "Upload results" in response.text
+    assert "/admin/results/upload" in response.text
 
 
 def test_logout_clears_session(client: TestClient):

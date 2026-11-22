@@ -227,11 +227,11 @@ def apply_stored_rules_to_results(
 def maps_for_accepted(
     suggestions: List[NameSuggestion],
     accepted_ids: set[str],
-    rules: LoadedRules,
+    rules: LoadedRules | None = None,
 ) -> Tuple[Dict[RiderKey, RiderKey], Dict[str, str]]:
-    stored_rider, stored_team = build_stored_maps(rules)
-    rider = dict(stored_rider)
-    team = dict(stored_team)
+    _ = rules
+    rider: Dict[RiderKey, RiderKey] = {}
+    team: Dict[str, str] = {}
     for item in suggestions:
         if item.id not in accepted_ids:
             continue

@@ -1,0 +1,27 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+  <title>Admin</title>
+  {% include "head.html" %}
+</head>
+<body>
+  <div id="main">
+    <div id="site_content">
+      <div id="content" style="background-color:white; color:black; padding: 20px">
+        <h1>Admin</h1>
+        {% if email %}
+        <p>Signed in as <strong>{{ email }}</strong></p>
+        {% endif %}
+        <ul style="line-height: 1.8;">
+          <li><a href="/admin/results/?year={{ year }}">Result exports</a> — list, download, review</li>
+          <li><a href="/admin/results/upload?year={{ year }}">Upload results</a> — CrossMgr .csv / .xlsx</li>
+          <li><a href="/">Public site</a></li>
+        </ul>
+        <form method="post" action="/admin/logout" style="margin-top: 1.5em;">
+          <button type="submit">Log out</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

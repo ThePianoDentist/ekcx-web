@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Generate EKCX_SESSION_SECRET for local dev (admin sessions) and store in local/shell.env.
+# Generate EKCX_SESSION_SECRET for local dev (admin sessions) and store in `.env`.
 #
 #   ./local/generate-session-secret.sh
 #   source ~/.zshrc

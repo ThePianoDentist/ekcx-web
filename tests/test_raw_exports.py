@@ -36,6 +36,21 @@ def test_sanitize_csv_text_drops_license_column():
     assert df.loc[0, "Last Name"] == "HURST"
 
 
+def test_file_to_sanitized_csv_csv_bytes_with_xlsx_suffix(tmp_path: Path):
+    # Setup:
+    body = (
+        "Pos,Last Name,First Name,Team,Category,Gender\n"
+        "1,SMITH,Ann,VC Deal,Senior,F\n"
+    ).encode()
+    path = tmp_path / "suggested_export.xlsx"
+    path.write_bytes(body)
+    # Run:
+    csv_text = file_to_sanitized_csv(path)
+    # Check:
+    assert csv_text
+    assert "SMITH" in csv_text
+
+
 def test_file_to_sanitized_csv_from_local_xlsx():
     # Setup:
     root = Path(__file__).resolve().parents[1]

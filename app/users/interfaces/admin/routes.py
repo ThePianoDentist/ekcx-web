@@ -11,13 +11,23 @@ from app.web.templates import templates
 
 router = APIRouter(tags=["admin-auth"])
 
-_DEFAULT_AFTER_LOGIN = "/admin/results/"
+_DEFAULT_AFTER_LOGIN = "/admin/"
 
 
 def _safe_next_url(next_param: str | None) -> str:
     if not next_param or not next_param.startswith("/admin"):
         return _DEFAULT_AFTER_LOGIN
     return next_param
+
+
+@router.get("/", response_class=HTMLResponse)
+async def admin_index(request: Request, year: int = 2026):
+    email = request.session.get("admin_email")
+    return templates.TemplateResponse(
+        request=request,
+        name="admin/index.html",
+        context={"year": year, "email": email},
+    )
 
 
 @router.get("/login", response_class=HTMLResponse)
@@ -41,7 +51,7 @@ async def login_submit(
     request: Request,
     email: str = Form(...),
     password: str = Form(...),
-    next: str = Form("/admin/results/"),
+    next: str = Form("/admin/"),
 ):
     factory = get_session_factory()
     session = factory()

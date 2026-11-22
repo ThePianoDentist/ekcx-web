@@ -9,6 +9,17 @@
     table.rev { width: 100%; border-collapse: collapse; font-size: 0.9em; }
     table.rev th, table.rev td { border-bottom: 1px solid #ddd; padding: 6px; text-align: left; vertical-align: top; }
     pre.diff { background: #f5f5f5; padding: 10px; overflow: auto; font-size: 0.8em; max-height: 240px; }
+    .actions { margin-top: 1.5em; }
+    .btn-confirm {
+      background: #15803d;
+      color: #fff;
+      border: 1px solid #166534;
+      font-size: 1em;
+      padding: 6px 14px;
+      cursor: pointer;
+    }
+    .btn-confirm:hover { background: #166534; }
+    .file-pick { margin-top: 0.75em; }
   </style>
 </head>
 <body>
@@ -25,121 +36,101 @@
         {% endif %}
         {% if csv_diff %}
         <h2>CSV changes (re-upload)</h2>
-        <p>This replaces an already-ingested file. Confirming will regenerate standings for the whole {{ year }} season.</p>
+        <p>Confirming will rebuild {{ year }} standings for the whole season.</p>
         <pre class="diff">{{ csv_diff }}</pre>
         {% endif %}
 
-        <div class="stored-block">
-          <h2>Known normalisations (apply every season)</h2>
-          <p>Auto-applied from stored rules for names in this file.</p>
-          {% if review.stored %}
-          <table class="rev">
-            <thead>
-              <tr>
-                <th>Kind</th>
-                <th>From → To</th>
-                <th>Rounds (this season)</th>
-                <th>Clubs</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for row in review.stored %}
-              <tr>
-                <td>{{ row.kind }}</td>
-                <td><strong>{{ row.source }}</strong> → {{ row.target }}</td>
-                <td>{{ row.rounds | join(", ") or "—" }}</td>
-                <td>{{ row.clubs | join("; ") or "—" }}</td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-          {% else %}
-          <p>No stored rules apply to this file.</p>
-          {% endif %}
-        </div>
-
-        <div class="suggest-block">
-          <h2>New possible normalisations</h2>
-          <p>From case matching or similarity across ingested exports (and this upload).</p>
-          {% if review.suggestions %}
-          <table class="rev">
-            <thead>
-              <tr>
-                <th>Kind</th>
-                <th>Reason</th>
-                <th>From → To</th>
-                <th>Rounds</th>
-                <th>Clubs</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for row in review.suggestions %}
-              <tr>
-                <td>{{ row.kind }}</td>
-                <td>{{ row.reason }}</td>
-                <td><strong>{{ row.source }}</strong> → {{ row.target }}</td>
-                <td>{{ row.rounds | join(", ") or "—" }}</td>
-                <td>{{ row.clubs | join("; ") or "—" }}</td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-          {% else %}
-          <p>No new suggestions for this file.</p>
-          {% endif %}
-        </div>
-
-        <p>
-          <a href="/admin/results/exports/{{ export_id }}/download">Download current CSV</a>
-          ·
-          <a href="/admin/results/exports/{{ export_id }}/download-suggested?year={{ year }}">Download CSV with all suggestions applied</a>
-        </p>
-
-        {% if review.suggestions %}
-        <form method="post" action="/admin/results/exports/{{ export_id }}/accept-all" style="margin: 1em 0;">
+        <form method="post" action="/admin/results/exports/{{ export_id }}/confirm" enctype="multipart/form-data">
           <input type="hidden" name="year" value="{{ year }}" />
-          <button type="submit">Accept all suggestions and update standings</button>
-        </form>
-        {% endif %}
 
-        <form method="post" action="/admin/results/exports/{{ export_id }}/confirm" enctype="multipart/form-data" style="max-width: 40em;">
-          <input type="hidden" name="year" value="{{ year }}" />
-          <h3>Confirm ingest</h3>
-          <p>Optional: upload a tweaked CSV (or confirm without changes if suggestions are addressed).</p>
-          <p>
-            <label>Re-upload CSV<br />
-              <input type="file" name="file" accept=".csv,.xlsx" />
-            </label>
-          </p>
-          {% if review.suggestions %}
-          <p><strong>Accept</strong> (save as rules if you are not editing CSV manually):</p>
-          {% for row in review.suggestions %}
-          <p>
-            <label>
-              <input type="checkbox" name="accept" value="{{ row.id }}" />
-              Accept: {{ row.source }} → {{ row.target }}
-            </label>
-          </p>
-          {% endfor %}
-          <p><strong>Or mark as intentionally ignored:</strong></p>
-          {% for row in review.suggestions %}
-          <p>
-            <label>
-              <input type="checkbox" name="ignore" value="{{ row.id }}" />
-              Ignore: {{ row.source }} → {{ row.target }}
-            </label>
-          </p>
-          {% endfor %}
-          {% endif %}
+          <div class="stored-block">
+            <h2 style="margin-top: 0;">Known normalisations</h2>
+            <p>Saved rules from earlier seasons.</p>
+            {% if review.stored %}
+            <table class="rev">
+              <thead>
+                <tr>
+                  <th>Kind</th>
+                  <th>From → To</th>
+                  <th>Rounds (this season)</th>
+                  <th>Clubs</th>
+                  <th>Apply</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for row in review.stored %}
+                <tr>
+                  <td>{{ row.kind }}</td>
+                  <td><strong>{{ row.source }}</strong> → {{ row.target }}</td>
+                  <td>{{ row.rounds | join(", ") or "—" }}</td>
+                  <td>{{ row.clubs | join("; ") or "—" }}</td>
+                  <td><input type="checkbox" name="accept" value="{{ row.id }}" checked aria-label="Apply" /></td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+            {% else %}
+            <p>None for this file.</p>
+            {% endif %}
+          </div>
+
+          <div class="suggest-block">
+            <h2 style="margin-top: 0;">New suggestions</h2>
+            <p>Possible matches across rounds. Checked rows are saved as rules for future seasons.</p>
+            {% if review.suggestions %}
+            <table class="rev">
+              <thead>
+                <tr>
+                  <th>Kind</th>
+                  <th>Reason</th>
+                  <th>From → To</th>
+                  <th>Rounds</th>
+                  <th>Clubs</th>
+                  <th>Apply</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for row in review.suggestions %}
+                <tr>
+                  <td>{{ row.kind }}</td>
+                  <td>{{ row.reason }}</td>
+                  <td><strong>{{ row.source }}</strong> → {{ row.target }}</td>
+                  <td>{{ row.rounds | join(", ") or "—" }}</td>
+                  <td>{{ row.clubs | join("; ") or "—" }}</td>
+                  <td><input type="checkbox" name="accept" value="{{ row.id }}" checked aria-label="Apply" /></td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+            {% else %}
+            <p>None for this file.</p>
+            {% endif %}
+          </div>
+
           {% if csv_diff %}
           <p>
             <label>
               <input type="checkbox" name="confirm_overwrite" value="yes" required />
-              I understand this will overwrite / regenerate {{ year }} standings
+              I understand this rebuilds {{ year }} standings for the whole season
             </label>
           </p>
           {% endif %}
-          <p><button type="submit">Confirm and update standings</button></p>
+
+          <p class="actions">
+            <button type="submit" name="action" value="confirm" class="btn-confirm">Confirm</button>
+            {% if review.stored or review.suggestions %}
+            ·
+            <a href="/admin/results/exports/{{ export_id }}/download-suggested?year={{ year }}">Download CSV</a>
+            {% endif %}
+          </p>
+          <p class="file-pick">
+            <label>Re-upload file<br />
+              <input type="file" name="file" accept=".csv,.xlsx" />
+            </label>
+          </p>
+          <p style="margin: 0.5em 0 0;">
+            <button type="submit" name="action" value="reupload">Re-upload and confirm</button>
+          </p>
         </form>
       </div>
     </div>

@@ -34,21 +34,21 @@ Until DNS is green in Resend, keep using their sandbox `From` for smoke tests (s
 
 ## Local testing
 
-**0. Local env in zsh** (`local/shell.env`, sourced from `~/.zshrc`):
+**0. Local env** (repo-root `.env`, gitignored — template is `.env_sample`):
 
 ```bash
+cp .env_sample .env   # or ./local/setup-env.sh (migrates old local/shell.env)
 chmod +x local/setup-shell-env.sh local/generate-session-secret.sh local/send-test-email.sh
-./local/setup-shell-env.sh          # Resend API key
-./local/generate-session-secret.sh   # EKCX_SESSION_SECRET (required for make run)
-source ~/.zshrc
+./local/generate-session-secret.sh   # if placeholder secret in .env
+./local/setup-shell-env.sh           # Resend API key
+set -a && source .env && set +a      # or source ~/.zshrc if block installed
 ./local/send-test-email.sh jbknight07@gmail.com   # not you@example.com
 ```
 
 **1. Default (no API key)** — safe for pytest and day-to-day dev:
 
 ```bash
-export EKCX_SESSION_SECRET=$(python -c 'import secrets; print(secrets.token_hex(32))')
-# EKCX_EMAIL_MODE defaults to log
+# EKCX_SESSION_SECRET and EKCX_EMAIL_MODE come from `.env` when the app runs
 uv run python -m app.mail.interfaces.scripts.send_test_email --to YOUR_REAL_INBOX@...
 ```
 

@@ -15,6 +15,10 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from app.env import load_local_env
+
+load_local_env()
+
 from alembic import command
 from alembic.config import Config
 from sqlalchemy import delete, select
@@ -22,12 +26,13 @@ from sqlalchemy.orm import Session
 
 from app.db.session import build_sqlite_url, create_session_factory
 from app.events.data.models import Event
+from app.results.data import repository
+from app.results.domain.collect_exports import collect_results_from_exports
 from app.results.domain.exports import store_export_from_path
 from app.results.domain.raw_export import round_export_paths
 from app.standings.data.models import ClubStanding, Standing
 from app.standings.domain.html_standings import parse_rider_standings, parse_team_standings
 from app.standings.domain.persist_season import persist_season_results
-from scripts.generate_standings_2025 import collect_results
 
 YEAR = 2026
 # Farthingloe is held back for the first database ingest test.
@@ -126,6 +131,11 @@ def clear_league(session: Session) -> None:
         session.execute(delete(model))
 
 
+def _skip_disk_export(path: Path) -> bool:
+    """QA fixtures in results/2026/* should not replace league rows on backfill."""
+    return path.name.startswith("qa-")
+
+
 def load_raw_exports(
     session: Session,
     events: dict[int, Event],
@@ -135,6 +145,8 @@ def load_raw_exports(
     for round_num in sorted(INCLUDE_ROUNDS):
         event = events[round_num]
         for path in round_export_paths(results_dir, round_num):
+            if _skip_disk_export(path):
+                continue
             row = store_export_from_path(session, event.id, path)
             if row is None:
                 print(f"Skipping empty export: {path.name}", file=sys.stderr)
@@ -143,9 +155,22 @@ def load_raw_exports(
     return stored
 
 
-def load_season(session: Session, results_dir: Path) -> None:
-    all_results = collect_results(results_dir, include_rounds=INCLUDE_ROUNDS)
+def _results_for_included_rounds(
+    all_results: dict[str, dict[str, list]],
+) -> dict[str, dict[str, list]]:
+    filtered: dict[str, dict[str, list]] = {}
+    for category, rounds in all_results.items():
+        kept = {
+            round_key: rows
+            for round_key, rows in rounds.items()
+            if int(round_key) in INCLUDE_ROUNDS
+        }
+        if kept:
+            filtered[category] = kept
+    return filtered
 
+
+def load_season(session: Session, results_dir: Path) -> None:
     clear_league(session)
     events: dict[int, Event] = {}
     for spec in EVENTS:
@@ -157,6 +182,9 @@ def load_season(session: Session, results_dir: Path) -> None:
     export_count = load_raw_exports(session, events, results_dir)
     print(f"Stored {export_count} raw exports (licence columns stripped) for rounds {sorted(INCLUDE_ROUNDS)}")
 
+    repository.mark_exports_ingested(session, YEAR)
+    all_results = _results_for_included_rounds(collect_results_from_exports(session, YEAR))
+
     riders, standings_rows = persist_season_results(
         session,
         YEAR,
@@ -165,9 +193,6 @@ def load_season(session: Session, results_dir: Path) -> None:
         SEASON_START,
         merge_similar=True,
     )
-    from app.results.data import repository
-
-    repository.mark_exports_ingested(session, YEAR)
     session.commit()
     print(
         f"Loaded {YEAR} rounds {sorted(INCLUDE_ROUNDS)}: "

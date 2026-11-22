@@ -2,8 +2,10 @@ from __future__ import annotations
 
 from app.participants.domain.name_normalisation import (
     LoadedRules,
+    NameSuggestion,
     apply_stored_rules_to_results,
     build_stored_maps,
+    maps_for_accepted,
     new_suggestions,
 )
 
@@ -50,6 +52,26 @@ def test_stored_rider_rule_applies():
     # Check:
     row = all_results["mens"]["1"][0]
     assert row["first_name"] == "Oliver"
+
+
+def test_maps_for_accepted_skips_unchecked_stored():
+    # Setup:
+    stored = [
+        NameSuggestion(
+            id="stored-rider:BRADFORD:Ollie",
+            kind="rider",
+            reason="stored",
+            source="BRADFORD, Ollie",
+            target="BRADFORD, Oliver",
+            rounds=["1"],
+        )
+    ]
+    # Run:
+    rider_map, _ = maps_for_accepted(stored, set())
+    accepted_map, _ = maps_for_accepted(stored, {stored[0].id})
+    # Check:
+    assert rider_map == {}
+    assert accepted_map[("BRADFORD", "Ollie")] == ("BRADFORD", "Oliver")
 
 
 def test_similarity_suggestions_do_not_auto_apply():

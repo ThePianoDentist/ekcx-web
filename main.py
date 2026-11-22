@@ -1,3 +1,7 @@
+from app.env import load_local_env
+
+load_local_env()
+
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware

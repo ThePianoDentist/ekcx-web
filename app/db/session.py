@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+from app.env import load_local_env
+
+load_local_env()
+
 import os
 from pathlib import Path
 from typing import Optional, Union

@@ -45,6 +45,22 @@ Then sync the project (creates `.venv` and installs dependencies):
 make setup
 ```
 
+Local secrets live in repo-root `.env` (gitignored). Copy the template and fill in values:
+
+```bash
+cp .env_sample .env
+# or migrate from local/shell.env:
+./local/setup-env.sh
+```
+
+The app, Alembic, and `scripts/backfill_season.py` load `.env` automatically. Shell tools (`make`, one-off commands) still see vars if you export them once per session:
+
+```bash
+set -a && source .env && set +a
+```
+
+Or add that `source` to your shell config for this repo.
+
 Or directly:
 
 ```bash
@@ -79,17 +95,13 @@ Or:
 uv run alembic upgrade head
 ```
 
-`make db-backfill` loads the current season (2026 rounds 1–2) into that file: parsed `results` rows, standings tables, and one `result_exports` row per CrossMgr file (body stored as CSV text with British Cycling licence columns removed). It then checks against `templates/standings/2026/`. Round 3 is left out. On staging, run `./scripts/backfill_staging_db.sh` from the app root after `results/2026/{1,2}` is present. Set `EKCX_DB_PATH` to choose the file; staging and production each have their own.
+`make db-backfill` loads the current season (2026 rounds 1–2) into that file: one `result_exports` row per CrossMgr file on disk (licence columns stripped to CSV text), then parses **ingested** exports into `results`/standings the same way admin confirm does. `qa-*` files under `results/` are ignored. You need the real exports on disk, including round 1 **Elite Women** (`*Elite Women*.xlsx` or `.csv`). It then checks against `templates/standings/2026/`. Round 3 is left out. On staging, run `./scripts/backfill_staging_db.sh` from the app root after `results/2026/{1,2}` is present. Set `EKCX_DB_PATH` to choose the file; staging and production each have their own.
 
 For 2026 standings, the default is still the static HTML. Add `?source=db` to read the same tables from SQLite, e.g. `/standings/2026/v40?source=db`.
 
 ## Admin
 
-Set a session signing secret (required to run the app):
-
-```bash
-export EKCX_SESSION_SECRET=$(python -c 'import secrets; print(secrets.token_hex(32))')
-```
+Set `EKCX_SESSION_SECRET` in `.env` (see Setup above). `./local/setup-env.sh` can generate one.
 
 Create an admin (email is the username; password is printed once — send it to them out of band):
 
@@ -98,6 +110,6 @@ make db-upgrade
 uv run python -m app.users.interfaces.scripts.create_admin you@example.com
 ```
 
-Log in at `/admin/login`. All `/admin/*` routes except login and logout require a session.
+Log in at `/admin/login` (lands on `/admin/` after sign-in). All `/admin/*` routes except login and logout require a session.
 
 Result uploads: `/admin/results/` lists CrossMgr exports on disk and in `result_exports`; `/admin/results/upload` accepts `.csv`/`.xlsx` and refreshes parsed results and standings from all `result_exports` for that season. `make db-ingest` runs the same refresh without a new upload. Override the results directory with `EKCX_RESULTS_ROOT` (default: repo `results/`).
