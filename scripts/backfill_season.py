@@ -24,7 +24,8 @@ from app.db.session import build_sqlite_url, create_session_factory
 from app.events.data.models import Event
 from app.participants.data.models import Club, ClubMembership, NameNormalisation, Participant
 from app.results.data.models import Result, ResultExport
-from app.results.domain.raw_export import file_to_sanitized_csv, round_export_paths
+from app.results.domain.exports import store_export_from_path
+from app.results.domain.raw_export import round_export_paths
 from app.standings.data.models import ClubCategoryPoints, ClubStanding, EventPoints, Standing
 from app.standings.domain.html_standings import parse_rider_standings, parse_team_standings
 from scripts.generate_standings_2025 import (
@@ -199,17 +200,10 @@ def load_raw_exports(
     for round_num in sorted(INCLUDE_ROUNDS):
         event = events[round_num]
         for path in round_export_paths(results_dir, round_num):
-            csv_text = file_to_sanitized_csv(path)
-            if not csv_text:
+            row = store_export_from_path(session, event.id, path)
+            if row is None:
                 print(f"Skipping empty export: {path.name}", file=sys.stderr)
                 continue
-            session.add(
-                ResultExport(
-                    event_id=event.id,
-                    filename=path.name,
-                    csv_text=csv_text,
-                )
-            )
             stored += 1
     return stored
 

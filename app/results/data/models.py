@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, List, Optional
 
-from sqlalchemy import Boolean, CheckConstraint, ForeignKey, Integer, JSON, String, UniqueConstraint
+from datetime import datetime
+
+from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Integer, JSON, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -27,6 +29,13 @@ class ResultExport(Base):
     )
     filename: Mapped[str] = mapped_column(String, nullable=False)
     csv_text: Mapped[str] = mapped_column(String, nullable=False)
+    uploaded_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    ingest_status: Mapped[str] = mapped_column(
+        String,
+        nullable=False,
+        default="stored",
+        server_default="stored",
+    )
 
     event: Mapped["Event"] = relationship(back_populates="result_exports")
 
